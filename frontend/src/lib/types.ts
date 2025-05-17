@@ -1,0 +1,113 @@
+// Types for FitTrack Pro Application
+// Contains all TypeScript interfaces for data models used across the app
+
+// Routine related types
+export interface Routine {
+  id: number;
+  name: string;
+  description: string;
+  frequency: string;
+  duration: string;
+  level: string;
+  category: string;
+  exercises: Exercise[];
+  history?: WorkoutSession[];
+}
+
+export interface Exercise {
+  name: string;
+  sets: number;
+  reps: string;
+  rest: string;
+}
+
+export interface WorkoutSession {
+  date: string;
+  duration: string;
+  exercises: CompletedExercise[];
+}
+
+export interface CompletedExercise {
+  name: string;
+  completed: boolean;
+  weight?: string;
+  actualSets: number;
+  actualReps: string;
+}
+
+// Challenge related types
+export interface Challenge {
+  id: number;
+  name: string;
+  description: string;
+  duration: string;
+  difficulty: string;
+  participants: number;
+  startDate: string;
+  endDate: string;
+  progress: number;
+  days: ChallengeDay[];
+  image?: string;
+}
+
+export interface ChallengeDay {
+  day: number;
+  target: string;
+  completed: boolean;
+}
+
+// Social related types
+export interface SocialPost {
+  id: number;
+  user: {
+    id: number;
+    name: string;
+    username: string;
+    avatar: string;
+  };
+  content: string;
+  image?: string;
+  likes: number;
+  comments: Comment[];
+  timestamp: string;
+}
+
+export interface Comment {
+  id: number;
+  user: {
+    id: number;
+    name: string;
+    username: string;
+    avatar: string;
+  };
+  content: string;
+  timestamp: string;
+}
+
+// Workout log related types
+export interface WorkoutLog {
+  id: number;
+  date: string;
+  routineId: number;
+  routineName: string;
+  duration: string;
+  exercises: LoggedExercise[];
+  notes?: string;
+}
+
+export interface LoggedExercise {
+  name: string;
+  sets: number;
+  reps: string;
+  weight?: string;
+  completed: boolean;
+}
+
+export interface UserChallenges {
+  active: Challenge[];
+  completed: Challenge[];
+  past: Challenge[];
+}
+
+// API status type
+export type ApiStatus = "idle" | "loading" | "success" | "error";
