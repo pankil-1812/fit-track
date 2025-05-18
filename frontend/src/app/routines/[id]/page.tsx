@@ -1,36 +1,53 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "framer-motion"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Clock, 
-  Edit, 
-  PlayCircle, 
-  Share2, 
-  Star, 
-  ChevronDown, 
-  Dumbbell, 
+import { format } from "date-fns"
+import {
+  ArrowLeft,
+  Clock,
+  Edit,
+  PlayCircle,
+  Share2,
+  Star,
+  ChevronDown,
+  Dumbbell,
   Timer,
   AlertCircle,
-  Trash2
+  Trash2,
+  Check,
+  X,
+  Info,
+  Pause,
+  SkipForward
 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { routineService } from "@/lib/api"
+import { formatTime } from "@/lib/utils"
+import { useRoutine, useRoutineWorkoutHistory, useWorkoutSession } from "@/lib/data-hooks"
+import type { Exercise, CompletedExercise, RoutineCategory, RoutineDifficulty } from "@/lib/types"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,465 +64,789 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-// Import custom data hooks for API integration
-import { useRoutine, Routine, Exercise, WorkoutSession } from "../../../lib/data-hooks"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import { WorkoutExercise } from "@/components/ui/workout-exercise"
+import { ProgressCircle } from "@/components/ui/progress-circle"
 
-export default function RoutineDetailPage({ params }: { params: { id: string } }) {  
-  const { routine, status } = useRoutine(params.id)
+export default function RoutineDetailPage({ params }: { params: { id: string } }) {  const { routine, status } = useRoutine(params.id)
+  const { workoutLogs } = useRoutineWorkoutHistory(params.id)
+  const {
+    isActive: workoutInProgress,
+    isPaused,
+    currentExerciseIndex,
+    completedExercises,
+    elapsedTime,
+    startWorkout,
+    togglePause,
+    skipExercise,
+    completeExercise,
+    finishWorkout
+  } = useWorkoutSession(routine)
+  
+  const { toast } = useToast()
+  // UI State
   const [isStarred, setIsStarred] = useState(false)
-  const [isStartingWorkout, setIsStartingWorkout] = useState(false)
-  const [workoutInProgress, setWorkoutInProgress] = useState(false)
-  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
-  
-  // Loading state is derived from the status
-  const loading = status === "loading" || status === "idle"
-  
-  // Handle starting a workout
-  const startWorkout = () => {
-    setIsStartingWorkout(true)
-  }
-  
-  // Handle confirming workout start
-  const confirmStartWorkout = () => {
-    setWorkoutInProgress(true)
-    setIsStartingWorkout(false)
-    // In a real app, you'd initialize workout tracking here
-  }
-  
-  // Handle finishing the workout
-  const finishWorkout = () => {
-    setWorkoutInProgress(false)
-    setCurrentExerciseIndex(0)
-    alert("Workout completed! Great job!")
-    // In a real app, you'd save workout data here
-  }
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showExerciseModal, setShowExerciseModal] = useState(false)
+  const [editingExerciseIndex, setEditingExerciseIndex] = useState<number | null>(null)
+  const [showEditRoutineModal, setShowEditRoutineModal] = useState(false)
 
-  if (loading) {
-    return (
-      <div className="container mx-auto py-8 max-w-5xl">
-        <div className="flex flex-col space-y-6 items-center justify-center min-h-[400px]">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
-          <p className="text-muted-foreground">Loading routine details...</p>
-        </div>
-      </div>
-    )
+  // Form State
+  const [exerciseForm, setExerciseForm] = useState<Exercise>({
+    name: "",
+    description: "",
+    sets: 3,
+    reps: 10,
+    duration: 0,
+    restTime: 60,
+    weight: 0,
+    notes: ""
+  })
+
+  const [routineForm, setRoutineForm] = useState({
+    title: routine?.title || "",
+    description: routine?.description || "",
+    category: routine?.category || "strength",
+    difficulty: routine?.difficulty || "beginner",
+    isPublic: routine?.isPublic || false
+  })
+
+  // Sync forms with routine data
+  useEffect(() => {
+    if (routine) {
+      setRoutineForm({
+        title: routine.title || "",
+        description: routine.description || "",
+        category: routine.category || "strength",
+        difficulty: routine.difficulty || "beginner",
+        isPublic: routine.isPublic || false
+      })
+    }
+  }, [routine])
+
+  // Handle routine actions
+  const handleSaveRoutine = async () => {
+    if (!routine) return;
+    try {
+      await routineService.updateRoutine(params.id, {
+        _id: params.id,
+        ...routineForm
+      });
+      toast({
+        title: "Success",
+        description: "Your routine has been updated successfully"
+      });
+      setShowEditRoutineModal(false);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to update routine",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteRoutine = async () => {
+    setIsDeleting(true);
+    try {
+      await routineService.deleteRoutine(params.id);
+      window.location.href = "/routines";
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to delete routine",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  // Handle exercise actions
+  const handleSaveExercise = async () => {
+    if (!routine) return;
+
+    const exercises = [...routine.exercises];
+    if (editingExerciseIndex !== null) {
+      exercises[editingExerciseIndex] = exerciseForm;
+    } else {
+      exercises.push(exerciseForm);
+    }
+
+    try {
+      await routineService.updateRoutine(params.id, {
+        _id: params.id,
+        exercises
+      });
+      toast({
+        title: "Success",
+        description: editingExerciseIndex !== null ? "Exercise updated" : "Exercise added"
+      });
+      setShowExerciseModal(false);
+      setEditingExerciseIndex(null);
+      setExerciseForm({
+        name: "",
+        description: "",
+        sets: 3,
+        reps: 10,
+        duration: 0,
+        restTime: 60,
+        weight: 0,
+        notes: ""
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to save exercise",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteExercise = async (index: number) => {
+    if (!routine) return;
+    const exercises = [...routine.exercises];
+    exercises.splice(index, 1);
+
+    try {
+      await routineService.updateRoutine(params.id, {
+        _id: params.id,
+        exercises
+      });
+      toast({
+        title: "Exercise deleted",
+        description: "The exercise has been removed from this routine"
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to delete exercise",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle workout actions
+  const handleStartWorkout = () => {
+    startWorkout();
+  };
+
+  const handleSkipExercise = () => {
+    skipExercise();
+  };
+
+  const handleCompleteExercise = (completedExercise: CompletedExercise) => {
+    completeExercise(completedExercise);
+  };
+
+  const handleFinishWorkout = async () => {
+    try {
+      await finishWorkout();
+      toast({
+        title: "Success",
+        description: "Your workout has been logged successfully"
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to save workout",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (status === "loading") {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
 
   if (!routine) {
     return (
-      <div className="container mx-auto py-8 max-w-5xl">
-        <div className="flex flex-col space-y-6 items-center justify-center min-h-[400px]">
-          <div className="rounded-full bg-amber-100 p-3 dark:bg-amber-900">
-            <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-          </div>          <h3 className="text-xl font-medium">Routine Not Found</h3>
-          <p className="text-muted-foreground text-center max-w-md">
-            We couldn&apos;t find the routine you&apos;re looking for. It may have been removed or you may have followed an invalid link.
-          </p>
-          <Button asChild>
-            <Link href="/routines">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Routines
-            </Link>
-          </Button>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Routine not found</h2>
+        <p className="text-muted-foreground mb-4">This routine might have been deleted or you don't have access to it.</p>
+        <Button asChild>
+          <Link href="/routines">Back to Routines</Link>
+        </Button>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-5xl">
-      <div className="flex flex-col space-y-6">
-        {/* Back navigation */}
-        <div>
-          <Button variant="ghost" className="pl-0 mb-4" asChild>
+    <div className="container mx-auto py-8">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
             <Link href="/routines">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Routines
+              <ArrowLeft className="h-6 w-6" />
             </Link>
           </Button>
-        </div>
-        
-        {/* Header section */}
-        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{routine.name}</h1>
-            <p className="text-muted-foreground mt-1 max-w-2xl">
-              {routine.description}
-            </p>
+            <h1 className="text-3xl font-bold">{routine.title}</h1>
+            <p className="text-muted-foreground">{routine.description}</p>
           </div>
-          
-          <div className="flex gap-2 self-start">            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => {
-                setIsStarred(!isStarred);
-                // Show feedback to user
-                if (!isStarred) {
-                  alert("Routine added to favorites!");
-                }
-              }}
-            >
-              <Star className={`h-4 w-4 ${isStarred ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-              <span className="sr-only">Favorite</span>
-            </Button>
-              <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Share2 className="h-4 w-4" />
-                  <span className="sr-only">Share</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  alert("Link copied to clipboard!");
-                }}>
-                  Copy Link
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  window.open(`https://twitter.com/intent/tweet?text=Check%20out%20this%20workout%20routine!&url=${encodeURIComponent(window.location.href)}`);
-                }}>
-                  Share on Twitter
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`);
-                }}>
-                  Share on Facebook
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <ChevronDown className="h-4 w-4" />
-                  <span className="sr-only">More</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Routine
-                </DropdownMenuItem>
-                <DropdownMenuItem>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsStarred(!isStarred)}
+          >
+            <Star className={isStarred ? "fill-yellow-400" : ""} />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+          >
+            <Share2 />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowEditRoutineModal(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Routine
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Routine
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          {/* Workout Controls */}
+          {!workoutInProgress ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Ready to workout?</CardTitle>
+                <CardDescription>Start this routine to track your progress</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>{routine.estimatedDuration} minutes</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Dumbbell className="h-4 w-4" />
+                    <span>{routine.exercises.length} exercises</span>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button onClick={handleStartWorkout}>
                   <PlayCircle className="mr-2 h-4 w-4" />
                   Start Workout
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Routine
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-              <Button 
-              className="gap-2"
-              onClick={startWorkout}
-            >
-              <PlayCircle className="h-4 w-4" />
-              Start Workout
-            </Button>
-            
-            {/* Workout Start Dialog */}
-            <Dialog open={isStartingWorkout} onOpenChange={setIsStartingWorkout}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Start Workout</DialogTitle>
-                  <DialogDescription>
-                    You&apos;re about to start {routine?.name}. Get ready!
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <p>This workout includes {routine?.exercises?.length || 0} exercises and will take approximately {routine?.duration}.</p>
-                  <p className="mt-2">Make sure you have the necessary equipment ready and enough space to exercise safely.</p>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsStartingWorkout(false)}>Cancel</Button>
-                  <Button onClick={confirmStartWorkout}>Start Now</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            
-            {/* Workout Progress Dialog */}
-            <Dialog open={workoutInProgress} onOpenChange={setWorkoutInProgress}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Workout in Progress</DialogTitle>
-                  <DialogDescription>
-                    {routine?.name} - Exercise {currentExerciseIndex + 1} of {routine?.exercises?.length || 0}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  {routine?.exercises && routine.exercises[currentExerciseIndex] && (
-                    <div className="space-y-4">
-                      <h3 className="text-xl font-bold">{routine.exercises[currentExerciseIndex].name}</h3>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p><strong>Sets:</strong> {routine.exercises[currentExerciseIndex].sets}</p>
-                          <p><strong>Reps:</strong> {routine.exercises[currentExerciseIndex].reps}</p>
-                          <p><strong>Rest:</strong> {routine.exercises[currentExerciseIndex].rest}</p>
-                        </div>
-                        <div className="text-4xl font-bold">{currentExerciseIndex + 1}/{routine.exercises.length}</div>
-                      </div>
+                </Button>
+              </CardFooter>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {/* Progress Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Workout in Progress</CardTitle>
+                  <CardDescription>
+                    Exercise {currentExerciseIndex + 1} of {routine.exercises.length}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Timer className="h-4 w-4" />
+                      <span className="text-lg font-medium">
+                        {formatTime(elapsedTime)}
+                      </span>
                     </div>
-                  )}
-                </div>
-                <DialogFooter className="flex flex-col sm:flex-row gap-2">
-                  {currentExerciseIndex < (routine?.exercises?.length || 0) - 1 ? (
-                    <Button className="w-full" onClick={() => setCurrentExerciseIndex(currentExerciseIndex + 1)}>
-                      Next Exercise
-                    </Button>
-                  ) : (
-                    <Button className="w-full" onClick={finishWorkout}>
-                      Complete Workout
-                    </Button>
-                  )}
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-        
-        {/* Routine metadata cards */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-        >
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                Frequency
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-medium">{routine.frequency}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                Duration
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-medium">{routine.duration}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <Dumbbell className="h-4 w-4 mr-2 text-muted-foreground" />
-                Level
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-medium">{routine.level}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <Dumbbell className="h-4 w-4 mr-2 text-muted-foreground" />
-                Category
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-medium">{routine.category}</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-        
-        {/* Tabs for exercises and history */}
-        <Tabs defaultValue="exercises" className="w-full mt-6">
-          <TabsList className="mb-6">
-            <TabsTrigger value="exercises">Exercises</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-            <TabsTrigger value="notes">Notes</TabsTrigger>
-          </TabsList>
-          
-          {/* Exercises tab content */}
-          <TabsContent value="exercises" className="mt-0">
-            <div className="grid gap-4">
-              {routine.exercises.map((exercise: Exercise, index: number) => (
-                <motion.div
-                  key={`${exercise.name}-${index}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.05 }}
+                    <div className="flex items-center gap-2">
+                      <Info className="h-4 w-4" />
+                      <span>
+                        {completedExercises.length} of {routine.exercises.length} completed
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>              {/* Current Exercise */}
+              {routine.exercises[currentExerciseIndex] && (
+                <WorkoutExercise
+                  key={currentExerciseIndex}
+                  exercise={routine.exercises[currentExerciseIndex]}
+                  onComplete={handleCompleteExercise}
+                  onSkip={handleSkipExercise}
+                  showControls={!isPaused}
+                />
+              )}
+
+              {/* Control Buttons */}
+              <div className="flex gap-4">
+                <Button
+                  className="flex-1"
+                  size="lg"
+                  variant={isPaused ? "default" : "outline"}
+                  onClick={togglePause}
                 >
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex flex-col md:flex-row justify-between gap-4">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{exercise.name}</h3>
-                          <div className="flex gap-2 items-center mt-2 text-sm text-muted-foreground">
-                            <div className="flex gap-1 items-center">
-                              <div className="h-2 w-2 bg-primary rounded-full"></div>
-                              <span>{exercise.sets} sets</span>
-                            </div>
-                            <div className="flex gap-1 items-center">
-                              <div className="h-2 w-2 bg-primary rounded-full"></div>
-                              <span>{exercise.reps}</span>
-                            </div>
-                            <div className="flex gap-1 items-center">
-                              <Timer className="h-4 w-4" />
-                              <span>{exercise.rest} rest</span>
-                            </div>
-                          </div>
+                  {isPaused ? (
+                    <>
+                      <PlayCircle className="mr-2 h-5 w-5" />
+                      Start Exercise
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="mr-2 h-5 w-5" />
+                      Pause
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  className="flex-1"
+                  size="lg"
+                  variant="outline"
+                  onClick={handleSkipExercise}
+                >
+                  <SkipForward className="mr-2 h-5 w-5" />
+                  Skip Exercise
+                </Button>
+
+                {currentExerciseIndex === routine.exercises.length - 1 && (
+                  <Button
+                    className="flex-1"
+                    size="lg"
+                    onClick={handleFinishWorkout}
+                  >
+                    Finish Workout
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Exercises List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Exercises</CardTitle>
+              <CardDescription>
+                {routine.exercises.length} exercise{routine.exercises.length !== 1 ? 's' : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {routine.exercises.map((exercise, index) => (
+                  <Card key={index}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle>{exercise.name}</CardTitle>
+                          <CardDescription>{exercise.description}</CardDescription>
                         </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="whitespace-nowrap">
-                                Exercise Details
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>{exercise.name}</DialogTitle>
-                                <DialogDescription>
-                                  Exercise details and instructions
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4 py-4">
-                                <div>
-                                  <h4 className="font-medium mb-2">Instructions</h4>
-                                  <p className="text-sm text-muted-foreground">
-                                    Detailed instructions would go here. This would typically include proper form, breathing techniques, and common mistakes to avoid.
-                                  </p>
-                                </div>
-                                
-                                <div>
-                                  <h4 className="font-medium mb-2">Target Muscles</h4>
-                                  <div className="flex flex-wrap gap-2 text-xs">
-                                    <div className="px-2 py-1 bg-primary/10 text-primary rounded-md">
-                                      Primary Muscle Group
-                                    </div>
-                                    <div className="px-2 py-1 bg-muted rounded-md">
-                                      Secondary Muscle Group
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setExerciseForm(exercise);
+                              setEditingExerciseIndex(index);
+                              setShowExerciseModal(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteExercise(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex gap-4 text-sm text-muted-foreground">
+                        <div>
+                          {exercise.sets} sets × {exercise.reps} reps
+                        </div>
+                        {exercise.weight > 0 && (
+                          <div>{exercise.weight}kg</div>
+                        )}
+                        {exercise.duration > 0 && (
+                          <div>{formatTime(exercise.duration)}</div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
-                </motion.div>
-              ))}
-            </div>
-            
-            {/* Add exercise button */}
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="w-full mt-4">
-                  + Add Exercise
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Exercise</DialogTitle>
-                  <DialogDescription>
-                    Add a new exercise to this routine
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Exercise Name</label>
-                    <Input placeholder="e.g., Bench Press" />
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Sets</label>
-                      <Input type="number" placeholder="3" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Reps</label>
-                      <Input placeholder="8-12" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Rest</label>
-                      <Input placeholder="60 sec" />
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline">Cancel</Button>
-                  <Button>Add Exercise</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </TabsContent>
-          
-          {/* History tab content */}
-          <TabsContent value="history" className="mt-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Workout History</CardTitle>
-                <CardDescription>
-                  Previous workout sessions using this routine
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">                  {routine.history ? (
-                    routine.history.map((session: WorkoutSession, index: number) => (
-                      <div key={index} className="flex justify-between items-center">
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Workout History</CardTitle>
+              <CardDescription>
+                {workoutLogs.length} workout{workoutLogs.length !== 1 ? 's' : ''} completed
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {workoutLogs.map((log) => (
+                  <Card key={log._id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-medium">{session.date}</p>
-                          <p className="text-sm text-muted-foreground">{session.duration} • {session.exercises.length} exercises</p>
+                          <CardTitle>
+                            {format(new Date(log.startTime), 'MMMM d, yyyy')}
+                          </CardTitle>
+                          <CardDescription>
+                            {format(new Date(log.startTime), 'h:mm a')} - {format(new Date(log.endTime), 'h:mm a')}
+                          </CardDescription>
                         </div>
-                        <Button variant="outline" size="sm">View Details</Button>
+                        <div className="text-right">
+                          <div className="font-medium">
+                            {Math.floor(log.duration / 60)} minutes
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {log.exercises.length} exercises
+                          </div>
+                        </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <div className="rounded-full bg-muted p-3 mb-4">
-                        <Calendar className="h-6 w-6 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {log.exercises.map((exercise, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            {exercise.completed ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <X className="h-4 w-4 text-red-500" />
+                            )}
+                            <span>
+                              {exercise.name} - {exercise.actualSets} × {exercise.actualReps}
+                              {exercise.actualWeight ? ` @ ${exercise.actualWeight}kg` : ''}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                      <h3 className="text-lg font-medium">No workout history</h3>                      <p className="text-muted-foreground mt-1 mb-4">
-                        You haven&apos;t completed any workouts with this routine yet.
-                      </p>
-                      <Button>Start Workout</Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* Notes tab content */}
-          <TabsContent value="notes" className="mt-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Routine Notes</CardTitle>
-                <CardDescription>
-                  Add personal notes and observations about this routine
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <textarea 
-                  className="w-full min-h-[200px] p-4 rounded-md border border-input bg-transparent resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Add your notes here. For example: &apos;Increase weight on bench press next time&apos; or &apos;Focus on better form for squats&apos;"
-                ></textarea>
-                <div className="mt-4 flex justify-end">
-                  <Button>Save Notes</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Exercise Modal */}
+      <Dialog open={showExerciseModal} onOpenChange={setShowExerciseModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingExerciseIndex !== null ? 'Edit Exercise' : 'Add Exercise'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                placeholder="Exercise name"
+                value={exerciseForm.name}
+                onChange={(e) => setExerciseForm((prev) => ({
+                  ...prev,
+                  name: e.target.value,
+                }))}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Exercise description"
+                value={exerciseForm.description}
+                onChange={(e) =>
+                  setExerciseForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="sets">Sets</Label>
+                <Input
+                  id="sets"
+                  type="number"
+                  min={1}
+                  value={exerciseForm.sets}
+                  onChange={(e) =>
+                    setExerciseForm((prev) => ({
+                      ...prev,
+                      sets: parseInt(e.target.value) || 1,
+                    }))
+                  }
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="reps">Reps</Label>
+                <Input
+                  id="reps"
+                  type="number"
+                  min={1}
+                  value={exerciseForm.reps}
+                  onChange={(e) =>
+                    setExerciseForm((prev) => ({
+                      ...prev,
+                      reps: parseInt(e.target.value) || 1,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="duration">Duration (seconds)</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  min={0}
+                  value={exerciseForm.duration}
+                  onChange={(e) =>
+                    setExerciseForm((prev) => ({
+                      ...prev,
+                      duration: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="restTime">Rest Time (seconds)</Label>
+                <Input
+                  id="restTime"
+                  type="number"
+                  min={0}
+                  value={exerciseForm.restTime}
+                  onChange={(e) =>
+                    setExerciseForm((prev) => ({
+                      ...prev,
+                      restTime: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="weight">Weight (kg)</Label>
+              <Input
+                id="weight"
+                type="number"
+                min={0}
+                step={0.5}
+                value={exerciseForm.weight}
+                onChange={(e) =>
+                  setExerciseForm((prev) => ({
+                    ...prev,
+                    weight: parseFloat(e.target.value) || 0,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Additional notes"
+                value={exerciseForm.notes}
+                onChange={(e) =>
+                  setExerciseForm((prev) => ({
+                    ...prev,
+                    notes: e.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveExercise}>
+              {editingExerciseIndex !== null ? 'Update Exercise' : 'Add Exercise'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Routine Modal */}
+      <Dialog open={showEditRoutineModal} onOpenChange={setShowEditRoutineModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Routine</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={routineForm.title}
+                onChange={(e) =>
+                  setRoutineForm((prev) => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={routineForm.description}
+                onChange={(e) =>
+                  setRoutineForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="category">Category</Label>
+              <Select
+                value={routineForm.category}
+                onValueChange={(value) =>
+                  setRoutineForm((prev) => ({
+                    ...prev,
+                    category: value as RoutineCategory,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="strength">Strength</SelectItem>
+                    <SelectItem value="cardio">Cardio</SelectItem>
+                    <SelectItem value="hiit">HIIT</SelectItem>
+                    <SelectItem value="flexibility">Flexibility</SelectItem>
+                    <SelectItem value="bodyweight">Bodyweight</SelectItem>
+                    <SelectItem value="powerlifting">Powerlifting</SelectItem>
+                    <SelectItem value="crossfit">CrossFit</SelectItem>
+                    <SelectItem value="yoga">Yoga</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="difficulty">Difficulty</Label>
+              <Select
+                value={routineForm.difficulty}
+                onValueChange={(value) =>
+                  setRoutineForm((prev) => ({
+                    ...prev,
+                    difficulty: value as RoutineDifficulty,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isPublic"
+                checked={routineForm.isPublic}
+                onCheckedChange={(checked) =>
+                  setRoutineForm((prev) => ({
+                    ...prev,
+                    isPublic: !!checked,
+                  }))
+                }
+              />
+              <Label htmlFor="isPublic">Make routine public</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveRoutine}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Routine</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this routine? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteRoutine}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }

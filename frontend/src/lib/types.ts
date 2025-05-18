@@ -1,6 +1,9 @@
 // Types for FitTrack Pro Application
 // Contains all TypeScript interfaces for data models used across the app
 
+// Common types
+export type ApiStatus = "idle" | "loading" | "success" | "error";
+
 // User related types
 export interface User {
   _id: string;
@@ -59,121 +62,99 @@ export interface UserProfileData {
   activityLevel?: string;
 }
 
-export interface UserSettings {
-  profileVisibility: 'public' | 'friends' | 'private';
-  activityVisibility: 'public' | 'friends' | 'private';
-  showInLeaderboards: boolean;
-  notificationsEmail?: boolean;
-  notificationsPush?: boolean;
-}
-
-// Routine related types
-export interface Routine {
-  id: number;
-  name: string;
-  description: string;
-  frequency: string;
-  duration: string;
-  level: string;
-  category: string;
-  exercises: Exercise[];
-  history?: WorkoutSession[];
-}
-
+// Exercise and Routine types
 export interface Exercise {
-  name: string;
-  sets: number;
-  reps: string;
-  rest: string;
-}
-
-export interface WorkoutSession {
-  date: string;
-  duration: string;
-  exercises: CompletedExercise[];
-}
-
-export interface CompletedExercise {
-  name: string;
-  completed: boolean;
-  weight?: string;
-  actualSets: number;
-  actualReps: string;
-}
-
-// Challenge related types
-export interface Challenge {
-  id: number;
-  name: string;
-  description: string;
-  duration: string;
-  difficulty: string;
-  participants: number;
-  startDate: string;
-  endDate: string;
-  progress: number;
-  days: ChallengeDay[];
-  image?: string;
-}
-
-export interface ChallengeDay {
-  day: number;
-  target: string;
-  completed: boolean;
-}
-
-// Social related types
-export interface SocialPost {
-  id: number;
-  user: {
-    id: number;
     name: string;
-    username: string;
-    avatar: string;
-  };
-  content: string;
-  image?: string;
-  likes: number;
-  comments: Comment[];
-  timestamp: string;
+    description?: string;
+    sets: number; // Required, minimum 1
+    reps: number; // Required, minimum 1
+    duration?: number; // Optional, in seconds, minimum 0
+    restTime?: number; // Optional, in seconds, minimum 0, default 60
+    weight?: number; // Optional, in kg/lbs, minimum 0
+    notes?: string;
+    mediaUrl?: string;
 }
 
-export interface Comment {
-  id: number;
-  user: {
-    id: number;
-    name: string;
-    username: string;
-    avatar: string;
-  };
-  content: string;
-  timestamp: string;
+export interface CompletedExercise extends Exercise {
+    completed: boolean;
+    actualSets: number;
+    actualReps: number;
+    actualWeight?: number;
+    notes?: string;
 }
 
-// Workout log related types
+export type RoutineDifficulty = 'beginner' | 'intermediate' | 'advanced';
+export type RoutineCategory = 
+    | 'strength' 
+    | 'cardio' 
+    | 'hiit' 
+    | 'flexibility' 
+    | 'bodyweight' 
+    | 'powerlifting' 
+    | 'crossfit' 
+    | 'yoga' 
+    | 'other';
+
+export interface Routine {
+    _id: string;
+    title: string; // Required, max 100 chars
+    description: string; // Required, max 500 chars
+    user: string | User;
+    exercises: Exercise[]; // At least one exercise required
+    tags: string[];
+    difficulty: RoutineDifficulty;
+    estimatedDuration: number; // in minutes, calculated from exercises
+    category: RoutineCategory;
+    isPublic: boolean;
+    isFeatured: boolean;
+    likes: string[];
+    saves: number;
+    shared: boolean;
+    createdAt: string;
+    updatedAt: string;
+    exerciseCount?: number;
+}
+
+export interface CreateRoutineData {
+    title: string; // Required, max 100 chars
+    description: string; // Required, max 500 chars
+    category: RoutineCategory; // Required
+    difficulty: RoutineDifficulty; // Required
+    isPublic?: boolean; // Optional, default false
+    exercises: Exercise[]; // Required, at least one
+    tags?: string[]; // Optional
+}
+
+export interface UpdateRoutineData extends Partial<Omit<CreateRoutineData, 'exercises'>> {
+    _id: string;
+    exercises?: Exercise[]; // Optional for updates
+}
+
+// Workout Log types
 export interface WorkoutLog {
-  id: number;
-  date: string;
-  routineId: number;
-  routineName: string;
-  duration: string;
-  exercises: LoggedExercise[];
+  _id: string;
+  user: string | User;
+  routine: string | Routine;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  exercises: CompletedExercise[];
   notes?: string;
+  rating?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface LoggedExercise {
-  name: string;
-  sets: number;
-  reps: string;
-  weight?: string;
-  completed: boolean;
+export interface CreateWorkoutLogData {
+  routine: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  exercises: CompletedExercise[];
+  notes?: string;
+  rating?: number;
 }
 
-export interface UserChallenges {
-  active: Challenge[];
-  completed: Challenge[];
-  past: Challenge[];
+export interface UpdateWorkoutLogData extends Partial<CreateWorkoutLogData> {
+  _id: string;
 }
-
-// API status type
-export type ApiStatus = "idle" | "loading" | "success" | "error";

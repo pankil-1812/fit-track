@@ -1,4 +1,4 @@
-import { body, param, query } from 'express-validator';
+import { body, param, query, check } from 'express-validator';
 
 /**
  * Validation rules for user registration
@@ -40,53 +40,166 @@ export const loginValidation = [
  * Validation rules for creating/updating routines
  */
 export const routineValidation = [
-  body('title')
-    .notEmpty()
-    .withMessage('Title is required')
-    .isLength({ min: 3, max: 100 })
-    .withMessage('Title must be between 3 and 100 characters'),
-  body('exercises')
-    .isArray()
-    .withMessage('Exercises must be an array'),
-  body('exercises.*.name')
-    .notEmpty()
-    .withMessage('Exercise name is required'),
-  body('category')
-    .optional()
-    .isIn([
-      'strength',
-      'cardio',
-      'hiit',
-      'flexibility',
-      'bodyweight',
-      'powerlifting',
-      'crossfit',
-      'yoga',
-      'other'
-    ])
-    .withMessage('Invalid category'),
-  body('difficulty')
-    .optional()
-    .isIn(['beginner', 'intermediate', 'advanced', 'expert'])
-    .withMessage('Invalid difficulty level')
+    check('title')
+        .exists()
+        .withMessage('Title field must exist')
+        .notEmpty()
+        .withMessage('Title is required')
+        .trim()
+        .isLength({ max: 100 })
+        .withMessage('Title cannot be more than 100 characters'),
+    
+    check('description')
+        .exists()
+        .withMessage('Description field must exist')
+        .notEmpty()
+        .withMessage('Description is required')
+        .trim()
+        .isLength({ max: 500 })
+        .withMessage('Description cannot be more than 500 characters'),
+    
+    check('category')
+        .exists()
+        .withMessage('Category field must exist')
+        .notEmpty()
+        .withMessage('Category is required')
+        .isIn([
+            'strength',
+            'cardio',
+            'hiit',
+            'flexibility',
+            'bodyweight',
+            'powerlifting',
+            'crossfit',
+            'yoga',
+            'other'
+        ])
+        .withMessage('Invalid category'),
+    
+    check('difficulty')
+        .exists()
+        .withMessage('Difficulty field must exist')
+        .notEmpty()
+        .withMessage('Difficulty level is required')
+        .isIn(['beginner', 'intermediate', 'advanced'])
+        .withMessage('Invalid difficulty level'),
+    
+    check('exercises')
+        .exists()
+        .withMessage('Exercises field must exist')
+        .isArray()
+        .withMessage('Exercises must be provided as an array')
+        .notEmpty()
+        .withMessage('At least one exercise is required'),
+    
+    check('exercises.*.name')
+        .exists()
+        .withMessage('Exercise name field must exist')
+        .notEmpty()
+        .withMessage('Exercise name is required')
+        .trim(),
+    
+    check('exercises.*.sets')
+        .optional({ nullable: true })
+        .isInt({ min: 1 })
+        .withMessage('Sets must be a positive number'),
+    
+    check('exercises.*.reps')
+        .optional({ nullable: true })
+        .isInt({ min: 1 })
+        .withMessage('Reps must be a positive number'),
+    
+    check('exercises.*.duration')
+        .optional({ nullable: true })
+        .isInt({ min: 0 })
+        .withMessage('Duration must be a non-negative number'),
+    
+    check('exercises.*.restTime')
+        .optional({ nullable: true })
+        .isInt({ min: 0 })
+        .withMessage('Rest time must be a non-negative number'),
+    
+    check('exercises.*.weight')
+        .optional({ nullable: true })
+        .isInt({ min: 0 })
+        .withMessage('Weight must be a non-negative number'),
+    
+    check('isPublic')
+        .optional({ nullable: true })
+        .isBoolean()
+        .withMessage('isPublic must be a boolean')
+        .toBoolean(),
+    
+    check('tags')
+        .optional({ nullable: true })
+        .isArray()
+        .withMessage('Tags must be provided as an array')
 ];
 
 /**
  * Validation rules for creating/updating workout logs
  */
 export const workoutLogValidation = [
-  body('title')
-    .notEmpty()
-    .withMessage('Title is required'),
-  body('exerciseLogs')
-    .isArray()
-    .withMessage('Exercise logs must be an array'),
-  body('exerciseLogs.*.exercise')
-    .notEmpty()
-    .withMessage('Exercise name is required'),
-  body('duration')
-    .isNumeric()
-    .withMessage('Duration must be a number')
+    check('routine')
+        .exists()
+        .withMessage('Routine field must exist')
+        .notEmpty()
+        .withMessage('Routine ID is required')
+        .isMongoId()
+        .withMessage('Invalid routine ID'),
+    
+    check('startTime')
+        .exists()
+        .withMessage('Start time field must exist')
+        .notEmpty()
+        .withMessage('Start time is required')
+        .isISO8601()
+        .withMessage('Invalid start time format'),
+    
+    check('endTime')
+        .exists()
+        .withMessage('End time field must exist')
+        .notEmpty()
+        .withMessage('End time is required')
+        .isISO8601()
+        .withMessage('Invalid end time format'),
+    
+    check('duration')
+        .exists()
+        .withMessage('Duration field must exist')
+        .isNumeric()
+        .withMessage('Duration must be a number'),
+    
+    check('exercises')
+        .exists()
+        .withMessage('Exercises field must exist')
+        .isArray()
+        .withMessage('Exercises must be an array')
+        .notEmpty()
+        .withMessage('At least one exercise is required'),
+    
+    check('exercises.*.name')
+        .exists()
+        .withMessage('Exercise name field must exist')
+        .notEmpty()
+        .withMessage('Exercise name is required'),
+    
+    check('exercises.*.actualSets')
+        .exists()
+        .withMessage('Actual sets field must exist')
+        .isNumeric()
+        .withMessage('Actual sets must be a number'),
+    
+    check('exercises.*.actualReps')
+        .exists()
+        .withMessage('Actual reps field must exist')
+        .isNumeric()
+        .withMessage('Actual reps must be a number'),
+    
+    check('rating')
+        .optional({ nullable: true })
+        .isInt({ min: 1, max: 5 })
+        .withMessage('Rating must be between 1 and 5')
 ];
 
 /**

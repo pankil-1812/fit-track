@@ -2,13 +2,13 @@ import mongoose from 'mongoose';
 
 export interface IExercise {
     name: string;
-    description: string;
+    description?: string;
     sets: number;
     reps: number;
-    duration: number; // in seconds
-    restTime: number; // in seconds
-    weight: number;
-    notes: string;
+    duration?: number; // in seconds
+    restTime?: number; // in seconds
+    weight?: number;
+    notes?: string;
     mediaUrl?: string;
 }
 
@@ -19,9 +19,9 @@ export interface IRoutine {
     user: mongoose.Types.ObjectId;
     exercises: IExercise[];
     tags: string[];
-    difficulty: string;
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
     estimatedDuration: number; // in minutes
-    category: string;
+    category: 'strength' | 'cardio' | 'hiit' | 'flexibility' | 'bodyweight' | 'powerlifting' | 'crossfit' | 'yoga' | 'other';
     isPublic: boolean;
     isFeatured: boolean;
     likes: mongoose.Types.ObjectId[];
@@ -42,32 +42,29 @@ const ExerciseSchema = new mongoose.Schema({
         trim: true
     },
     description: {
-        type: String,
-        default: ''
+        type: String
     },
     sets: {
         type: Number,
-        default: 1
+        required: [true, 'Number of sets is required'],
+        default: 3
     },
     reps: {
         type: Number,
+        required: [true, 'Number of reps is required'],
         default: 10
     },
     duration: {
-        type: Number,
-        default: 0
+        type: Number
     },
     restTime: {
-        type: Number,
-        default: 60
+        type: Number
     },
     weight: {
-        type: Number,
-        default: 0
+        type: Number
     },
     notes: {
-        type: String,
-        default: ''
+        type: String
     },
     mediaUrl: {
         type: String
@@ -84,7 +81,7 @@ const RoutineSchema = new mongoose.Schema(
         },
         description: {
             type: String,
-            default: '',
+            required: [true, 'Please provide a routine description'],
             maxlength: [500, 'Description cannot be more than 500 characters']
         },
         user: {
@@ -99,12 +96,13 @@ const RoutineSchema = new mongoose.Schema(
         },
         difficulty: {
             type: String,
-            enum: ['beginner', 'intermediate', 'advanced', 'expert'],
+            enum: ['beginner', 'intermediate', 'advanced'],
             default: 'intermediate'
         },
         estimatedDuration: {
             type: Number,
-            default: 0
+            required: [true, 'Please provide an estimated duration'],
+            min: [1, 'Duration must be at least 1 minute']
         },
         category: {
             type: String,
@@ -119,7 +117,7 @@ const RoutineSchema = new mongoose.Schema(
                 'yoga',
                 'other'
             ],
-            default: 'other'
+            required: [true, 'Please provide a category']
         },
         isPublic: {
             type: Boolean,
@@ -149,33 +147,9 @@ const RoutineSchema = new mongoose.Schema(
     }
 );
 
-// Virtual property for total exercise count
-RoutineSchema.virtual('exerciseCount').get(function (this: RoutineDocument) {
-    return this.exercises.length;
-});
-
-// Ensure user ref is populated
-RoutineSchema.pre(/^find/, function (this: mongoose.Query<any, any>, next) {
-    this.populate({
-        path: 'user',
-        select: 'name profilePicture'
-    });
-    next();
-});
-
-// Calculate estimated duration
-RoutineSchema.pre('save', function (next) {
-    const routine = this as RoutineDocument;
-    let totalDuration = 0;
-
-    routine.exercises.forEach(exercise => {
-        const exerciseDuration = (exercise.sets * (exercise.duration + exercise.restTime));
-        totalDuration += exerciseDuration;
-    });
-
-    // Convert seconds to minutes
-    routine.estimatedDuration = Math.ceil(totalDuration / 60);
-    next();
+// Virtual property for exercise count
+RoutineSchema.virtual('exerciseCount').get(function() {
+    return this.exercises?.length || 0;
 });
 
 export const Routine = mongoose.model<RoutineDocument>('Routine', RoutineSchema);

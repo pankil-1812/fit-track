@@ -107,7 +107,7 @@ export function Navbar() {
             setActiveDropdown(null);
         }, 100);
     }
-    
+
     // Helper function to determine if a dropdown should be shown
     const shouldShowDropdown = (itemName: string, submenu: NavSubItem[] | undefined) => {
         return activeDropdown === itemName && submenu && submenu.length > 0;
@@ -116,8 +116,8 @@ export function Navbar() {
     return (
         <header
             className={`sticky top-0 z-50 w-full transition-all duration-300 ${isScrolled
-                    ? "bg-background/80 backdrop-blur-xl border-b border-primary/10 shadow-sm"
-                    : "bg-transparent"
+                ? "bg-background/80 backdrop-blur-xl border-b border-primary/10 shadow-sm"
+                : "bg-transparent"
                 }`}
         >
             <div className="container mx-auto flex h-20 items-center justify-between px-4">
@@ -152,37 +152,37 @@ export function Navbar() {
                                 onMouseLeave={handleDropdownLeave}
                             >
                                 <Link
-                                href={item.href}
-                                className={`flex items-center text-sm font-medium px-4 py-2 rounded-full transition-all duration-200 hover:bg-primary/10 ${pathname === item.href || pathname.startsWith(item.href + '/')
+                                    href={item.href}
+                                    className={`flex items-center text-sm font-medium px-4 py-2 rounded-full transition-all duration-200 hover:bg-primary/10 ${pathname === item.href || pathname.startsWith(item.href + '/')
                                         ? "text-primary"
                                         : "text-foreground"
-                                    }`}
-                            >
-                                {item.name}
-                                {item.submenu && item.submenu.length > 0 && (
-                                    <ChevronDown className="ml-1 h-4 w-4" />
-                                )}
-                            </Link>                            {/* Dropdown Menu */}
-                            {shouldShowDropdown(item.name, item.submenu) && (
-                                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 z-50 min-w-[200px]">
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -5 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -5 }}
-                                        transition={{ duration: 0.2 }}
-                                        className="rounded-xl bg-background/80 backdrop-blur-xl shadow-lg border border-primary/10 p-2 overflow-hidden"
-                                    >
-                                        {item.submenu.map((subItem) => (
-                                            <Link
-                                                key={subItem.href}
-                                                href={subItem.href}
-                                                className="flex items-center gap-2 w-full text-sm px-3 py-2 rounded-lg hover:bg-primary/10 text-foreground transition-colors"
-                                            >
-                                                {subItem.name}
-                                            </Link>
-                                        ))}
-                                    </motion.div>
-                                </div>                            )}
+                                        }`}
+                                >
+                                    {item.name}
+                                    {item.submenu && item.submenu.length > 0 && (
+                                        <ChevronDown className="ml-1 h-4 w-4" />
+                                    )}
+                                </Link>                            {/* Dropdown Menu */}
+                                {shouldShowDropdown(item.name, item.submenu) && (
+                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 z-50 min-w-[200px]">
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -5 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="rounded-xl bg-background/80 backdrop-blur-xl shadow-lg border border-primary/10 p-2 overflow-hidden"
+                                        >
+                                            {item.submenu.map((subItem) => (
+                                                <Link
+                                                    key={subItem.href}
+                                                    href={subItem.href}
+                                                    className="flex items-center gap-2 w-full text-sm px-3 py-2 rounded-lg hover:bg-primary/10 text-foreground transition-colors"
+                                                >
+                                                    {subItem.name}
+                                                </Link>
+                                            ))}
+                                        </motion.div>
+                                    </div>)}
                             </div>
                         ))}
                     </nav>
@@ -234,7 +234,7 @@ export function Navbar() {
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     variant="ghost"
-                                    className="rounded-full flex items-center gap-2 pl-2 pr-3 transition-all duration-200 hover:bg-primary/10"
+                                    className="rounded-full flex items-center gap-2 pl-2 pr-3 transition-all duration-200 hover:bg-transparent"
                                 >
                                     <div className="relative">
                                         <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-primary to-blue-500 blur-sm opacity-70"></div>
@@ -327,8 +327,8 @@ export function Navbar() {
                                         <Link
                                             href={item.href}
                                             className={`flex items-center justify-between gap-2 p-3 rounded-xl ${pathname === item.href
-                                                    ? "bg-primary/10 text-primary font-medium"
-                                                    : "hover:bg-primary/5 text-foreground"
+                                                ? "bg-primary/10 text-primary font-medium"
+                                                : "hover:bg-primary/5 text-foreground"
                                                 }`}
                                             onClick={() => setIsMenuOpen(false)}
                                         >

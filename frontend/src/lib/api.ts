@@ -149,63 +149,217 @@ export const userService = {
 
 // Routines service
 export const routineService = {
-  getAllRoutines: async () => {
-    const response = await api.get('/routines');
-    return response.data;
-  },
-  
-  getRoutineById: async (id: string) => {
-    const response = await api.get(`/routines/${id}`);
-    return response.data;
-  },
-  
-  createRoutine: async (routineData: any) => {
-    const response = await api.post('/routines', routineData);
-    return response.data;
-  },
-  
-  updateRoutine: async (id: string, routineData: any) => {
-    const response = await api.put(`/routines/${id}`, routineData);
-    return response.data;
-  },
-  
-  deleteRoutine: async (id: string) => {
-    const response = await api.delete(`/routines/${id}`);
-    return response.data;
-  },
+    getAllRoutines: async () => {
+        const response = await api.get<{
+            success: boolean;
+            count: number;
+            total: number;
+            pagination: { current: number; pages: number };
+            data: Routine[];
+        }>('/routines');
+        return response.data;
+    },
+
+    getRoutineById: async (id: string) => {
+        const response = await api.get<{
+            success: boolean;
+            data: Routine;
+        }>(`/routines/${id}`);
+        return response.data.data;
+    },
+
+    createRoutine: async (routineData: CreateRoutineData) => {
+        // Ensure all required fields are present with proper formatting
+        const payload = {
+            title: routineData.title.trim(),
+            description: routineData.description.trim(),
+            category: routineData.category,
+            difficulty: routineData.difficulty,
+            isPublic: routineData.isPublic ?? false,
+            tags: routineData.tags || [],
+            exercises: routineData.exercises.map(exercise => ({
+                name: exercise.name.trim(),
+                description: exercise.description?.trim() || '',
+                sets: Math.max(1, exercise.sets || 3),
+                reps: Math.max(1, exercise.reps || 10),
+                duration: Math.max(0, exercise.duration || 0),
+                restTime: Math.max(0, exercise.restTime || 60),
+                weight: Math.max(0, exercise.weight || 0),
+                notes: exercise.notes?.trim() || '',
+                mediaUrl: exercise.mediaUrl || ''
+            }))
+        };
+
+        // Validate the payload matches our requirements
+        if (!payload.title || !payload.description || !payload.category || !payload.difficulty) {
+            throw new Error('Missing required fields');
+        }
+
+        if (!['beginner', 'intermediate', 'advanced'].includes(payload.difficulty)) {
+            throw new Error('Invalid difficulty level');
+        }
+
+        if (payload.exercises.length === 0) {
+            throw new Error('At least one exercise is required');
+        }
+
+        const response = await api.post<{
+            success: boolean;
+            data: Routine;
+        }>('/routines', payload);
+        return response.data.data;
+    },
+
+    updateRoutine: async (id: string, routineData: UpdateRoutineData) => {
+        // Only include fields that are present in the update data
+        const payload: Partial<CreateRoutineData> = {};
+
+        if (routineData.title !== undefined) {
+            payload.title = routineData.title.trim();
+        }
+        if (routineData.description !== undefined) {
+            payload.description = routineData.description.trim();
+        }
+        if (routineData.category !== undefined) {
+            payload.category = routineData.category;
+        }
+        if (routineData.difficulty !== undefined) {
+            payload.difficulty = routineData.difficulty;
+        }
+        if (routineData.isPublic !== undefined) {
+            payload.isPublic = routineData.isPublic;
+        }
+        if (routineData.tags !== undefined) {
+            payload.tags = routineData.tags;
+        }
+        if (routineData.exercises !== undefined) {
+            payload.exercises = routineData.exercises.map(exercise => ({
+                name: exercise.name.trim(),
+                description: exercise.description?.trim() || '',
+                sets: Math.max(1, exercise.sets || 3),
+                reps: Math.max(1, exercise.reps || 10),
+                duration: Math.max(0, exercise.duration || 0),
+                restTime: Math.max(0, exercise.restTime || 60),
+                weight: Math.max(0, exercise.weight || 0),
+                notes: exercise.notes?.trim() || '',
+                mediaUrl: exercise.mediaUrl || ''
+            }));
+        }
+
+        const response = await api.put<{
+            success: boolean;
+            data: Routine;
+        }>(`/routines/${id}`, payload);
+        return response.data.data;
+    },
+
+    deleteRoutine: async (id: string) => {
+        const response = await api.delete<{
+            success: boolean;
+            data: Record<string, never>;
+        }>(`/routines/${id}`);
+        return response.data;
+    },
+
+    likeRoutine: async (id: string) => {
+        const response = await api.put<{
+            success: boolean;
+            liked: boolean;
+            likeCount: number;
+            data: Routine;
+        }>(`/routines/${id}/like`);
+        return response.data;
+    },
+
+    saveRoutine: async (id: string) => {
+        const response = await api.put<{
+            success: boolean;
+            saveCount: number;
+            data: Routine;
+        }>(`/routines/${id}/save`);
+        return response.data;
+    },
+
+    searchRoutines: async (query: string) => {
+        const response = await api.get<{
+            success: boolean;
+            count: number;
+            data: Routine[];
+        }>(`/routines/search?q=${query}`);
+        return response.data;
+    },
 };
 
 // Workout logs service
 export const workoutLogService = {
   getAllWorkoutLogs: async () => {
-    const response = await api.get('/workout-logs');
+    const response = await api.get<{
+      success: boolean;
+      data: WorkoutLog[];
+    }>('/workout-logs');
     return response.data;
   },
   
   getWorkoutLogById: async (id: string) => {
-    const response = await api.get(`/workout-logs/${id}`);
+    const response = await api.get<{
+      success: boolean;
+      data: WorkoutLog;
+    }>(`/workout-logs/${id}`);
     return response.data;
   },
   
   getWorkoutLogsByDate: async (date: string) => {
-    const response = await api.get(`/workout-logs/date/${date}`);
+    const response = await api.get<{
+      success: boolean;
+      data: WorkoutLog[];
+    }>(`/workout-logs/date/${date}`);
+    return response.data;
+  },
+
+  getWorkoutLogsByRoutine: async (routineId: string) => {
+    const response = await api.get<{
+      success: boolean;
+      data: WorkoutLog[];
+    }>(`/workout-logs/routine/${routineId}`);
     return response.data;
   },
   
-  createWorkoutLog: async (logData: any) => {
-    const response = await api.post('/workout-logs', logData);
+  createWorkoutLog: async (logData: CreateWorkoutLogData) => {
+    const response = await api.post<{
+      success: boolean;
+      data: WorkoutLog;
+    }>('/workout-logs', logData);
     return response.data;
   },
   
-  updateWorkoutLog: async (id: string, logData: any) => {
-    const response = await api.put(`/workout-logs/${id}`, logData);
+  updateWorkoutLog: async (id: string, logData: UpdateWorkoutLogData) => {
+    const response = await api.put<{
+      success: boolean;
+      data: WorkoutLog;
+    }>(`/workout-logs/${id}`, logData);
     return response.data;
   },
   
   deleteWorkoutLog: async (id: string) => {
-    const response = await api.delete(`/workout-logs/${id}`);
+    const response = await api.delete<{
+      success: boolean;
+      data: Record<string, never>;
+    }>(`/workout-logs/${id}`);
     return response.data;
   },
+
+  getWorkoutStats: async () => {
+    const response = await api.get<{
+      success: boolean;
+      data: {
+        totalWorkouts: number;
+        totalDuration: number;
+        totalExercises: number;
+        frequentRoutines: Array<{ routine: Routine; count: number }>;
+      };
+    }>('/workout-logs/stats');
+    return response.data;
+  }
 };
 
 // Analytics service

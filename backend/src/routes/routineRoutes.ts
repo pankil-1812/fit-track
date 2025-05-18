@@ -1,38 +1,36 @@
 import express from 'express';
-import { protect } from '../middlewares/authMiddleware';
 import {
-  getRoutines,
-  getRoutine,
-  createRoutine,
-  updateRoutine,
-  deleteRoutine,
-  likeRoutine,
-  saveRoutine,
-  searchRoutines
+    getRoutines,
+    getRoutine,
+    createRoutine,
+    updateRoutine,
+    deleteRoutine,
+    likeRoutine,
+    saveRoutine,
+    searchRoutines
 } from '../controllers/routineController';
-import { validate } from '../middlewares/validatorMiddleware';
-import { routineValidation, idValidation } from '../services/validationService';
+import { protect } from '../middlewares/authMiddleware';
+import { validateRequest } from '../middlewares/validatorMiddleware';
+import { routineValidation } from '../services/validationService';
 
 const router = express.Router();
 
-// Protect all routes
-router.use(protect);
-
-// Search route
+// Public routes
 router.get('/search', searchRoutines);
 
-// Like and save routes
-router.put('/:id/like', validate(idValidation), likeRoutine);
-router.put('/:id/save', validate(idValidation), saveRoutine);
+// Protected routes
+router.use(protect);
 
-// Standard CRUD routes
 router.route('/')
-  .get(getRoutines)
-  .post(validate(routineValidation), createRoutine);
+    .get(getRoutines)
+    .post(routineValidation, validateRequest, createRoutine);
 
 router.route('/:id')
-  .get(validate(idValidation), getRoutine)
-  .put([...idValidation, ...routineValidation], updateRoutine)
-  .delete(validate(idValidation), deleteRoutine);
+    .get(getRoutine)
+    .put(routineValidation, validateRequest, updateRoutine)
+    .delete(deleteRoutine);
+
+router.put('/:id/like', likeRoutine);
+router.put('/:id/save', saveRoutine);
 
 export default router;

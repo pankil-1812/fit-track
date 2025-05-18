@@ -27,3 +27,32 @@ export const validate = (validations: ValidationChain[]) => {
     next();
   };
 };
+
+/**
+ * Middleware to validate request data
+ */
+export const validateRequest = (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        // Get all validation errors
+        const validationErrors = errors.array();
+        
+        // Create a map of field:error messages for cleaner output
+        const errorMap = new Map<string, string>();
+        validationErrors.forEach((error) => {
+            // Handle both newer path-based and older param-based errors
+            const field = typeof error === 'object' && 'path' in error 
+                ? String(error.path)
+                : (error as any).param || 'unknown';
+            
+            if (!errorMap.has(field)) {
+                errorMap.set(field, error.msg);
+            }
+        });
+
+        // Create a single error message with all field errors
+        const errorMessages = Array.from(errorMap.values());
+        return next(new AppError(errorMessages.join(', '), 400));
+    }
+    next();
+};

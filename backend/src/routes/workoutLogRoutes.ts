@@ -1,36 +1,67 @@
 import express from 'express';
-import { protect } from '../middlewares/authMiddleware';
+import { check } from 'express-validator';
 import {
-  getWorkoutLogs,
-  getWorkoutLog,
-  createWorkoutLog,
-  updateWorkoutLog,
-  deleteWorkoutLog,
-  getWorkoutStats
+    getWorkoutLogs,
+    getWorkoutLogsByDate,
+    getWorkoutLogsByRoutine,
+    createWorkoutLog,
+    updateWorkoutLog,
+    deleteWorkoutLog,
+    getWorkoutStats
 } from '../controllers/workoutLogController';
-import { validate } from '../middlewares/validatorMiddleware';
-import { 
-  workoutLogValidation, 
-  idValidation, 
-  dateRangeValidation 
-} from '../services/validationService';
+import { protect } from '../middlewares/authMiddleware';
+import { validateRequest } from '../middlewares/validatorMiddleware';
 
 const router = express.Router();
 
-// Protect all routes
+// Apply authentication middleware to all routes
 router.use(protect);
 
-// Stats route
-router.get('/stats', validate(dateRangeValidation), getWorkoutStats);
+// Validation middleware
+const validateWorkoutLog = [
+    check('routine')
+        .notEmpty()
+        .withMessage('Routine ID is required')
+        .isMongoId()
+        .withMessage('Invalid routine ID'),
+    check('startTime')
+        .notEmpty()
+        .withMessage('Start time is required')
+        .isISO8601()
+        .withMessage('Invalid start time format'),
+    check('endTime')
+        .notEmpty()
+        .withMessage('End time is required')
+        .isISO8601()
+        .withMessage('Invalid end time format'),
+    check('duration')
+        .isNumeric()
+        .withMessage('Duration must be a number'),
+    check('exercises')
+        .isArray()
+        .withMessage('Exercises must be an array'),
+    check('exercises.*.name')
+        .notEmpty()
+        .withMessage('Exercise name is required'),
+    check('exercises.*.actualSets')
+        .isNumeric()
+        .withMessage('Actual sets must be a number'),
+    check('exercises.*.actualReps')
+        .isNumeric()
+        .withMessage('Actual reps must be a number')
+];
 
-// Standard CRUD routes
+// Routes
 router.route('/')
-  .get(validate(dateRangeValidation), getWorkoutLogs)
-  .post(validate(workoutLogValidation), createWorkoutLog);
+    .get(getWorkoutLogs)
+    .post(validateWorkoutLog, validateRequest, createWorkoutLog);
+
+router.get('/stats', getWorkoutStats);
+router.get('/date/:date', getWorkoutLogsByDate);
+router.get('/routine/:routineId', getWorkoutLogsByRoutine);
 
 router.route('/:id')
-  .get(validate(idValidation), getWorkoutLog)
-  .put([...idValidation, ...workoutLogValidation], updateWorkoutLog)
-  .delete(validate(idValidation), deleteWorkoutLog);
+    .put(validateWorkoutLog, validateRequest, updateWorkoutLog)
+    .delete(deleteWorkoutLog);
 
 export default router;

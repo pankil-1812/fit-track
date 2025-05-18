@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { Routine, IRoutine } from '../models/routineModel';
+import { Routine } from '../models/routineModel';
+import { WorkoutLog } from '../models/workoutLogModel';
 import { asyncHandler, AppError } from '../utils/errorUtils';
 import mongoose from 'mongoose';
 
@@ -43,7 +44,7 @@ export const getRoutines = asyncHandler(async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
     const startIndex = (page - 1) * limit;
 
-    // Execute query
+    // Execute query with workout stats
     const routines = await Routine.find(query)
         .sort({ createdAt: -1 })
         .skip(startIndex)
@@ -51,6 +52,30 @@ export const getRoutines = asyncHandler(async (req: Request, res: Response) => {
 
     // Get total count for pagination
     const total = await Routine.countDocuments(query);
+
+    // Get workout history for routines
+    const routineIds = routines.map(r => r._id);
+    const workoutLogs = await WorkoutLog.find({
+        routine: { $in: routineIds }
+    }).select('routine duration startTime');
+
+    // Add workout stats to routines
+    const routinesWithStats = routines.map(routine => {
+        const logs = workoutLogs.filter(log => 
+            log.routine.toString() === routine._id.toString()
+        );
+        
+        return {
+            ...routine.toObject(),
+            workoutStats: {
+                totalWorkouts: logs.length,
+                totalDuration: logs.reduce((sum, log) => sum + log.duration, 0),
+                lastWorkout: logs.length > 0 
+                    ? new Date(Math.max(...logs.map(l => l.startTime.getTime())))
+                    : null
+            }
+        };
+    });
 
     res.status(200).json({
         success: true,
@@ -60,12 +85,12 @@ export const getRoutines = asyncHandler(async (req: Request, res: Response) => {
             current: page,
             pages: Math.ceil(total / limit)
         },
-        data: routines
+        data: routinesWithStats
     });
 });
 
 /**
- * @desc    Get single routine
+ * @desc    Get single routine with workout history
  * @route   GET /api/v1/routines/:id
  * @access  Private
  */
@@ -77,28 +102,72 @@ export const getRoutine = asyncHandler(async (req: Request, res: Response, next:
     }
 
     // Check if user has access to this routine
-    if (
-        !routine.isPublic &&
-        routine.user._id.toString() !== req.user!._id.toString()
-    ) {
+    if (!routine.isPublic && routine.user._id.toString() !== req.user!._id.toString()) {
         return next(new AppError('Not authorized to access this routine', 403));
     }
 
+    // Get workout history
+    const workoutLogs = await WorkoutLog.find({
+        routine: routine._id
+    }).sort({ startTime: -1 });
+
+    const routineWithHistory = {
+        ...routine.toObject(),
+        workoutHistory: workoutLogs,
+        stats: {
+            totalWorkouts: workoutLogs.length,
+            totalDuration: workoutLogs.reduce((sum, log) => sum + log.duration, 0),
+            averageDuration: workoutLogs.length > 0
+                ? Math.round(workoutLogs.reduce((sum, log) => sum + log.duration, 0) / workoutLogs.length)
+                : 0
+        }
+    };
+
     res.status(200).json({
         success: true,
-        data: routine
+        data: routineWithHistory
     });
 });
 
 /**
- * @desc    Create routine
+ * @desc    Create new routine
  * @route   POST /api/v1/routines
  * @access  Private
  */
 export const createRoutine = asyncHandler(async (req: Request, res: Response) => {
-    // Set user to logged in user
+    // Set user ID from authenticated user
     req.body.user = req.user!._id;
 
+    // Process exercises array
+    if (Array.isArray(req.body.exercises)) {
+        req.body.exercises = req.body.exercises.map((exercise: any) => ({
+            name: exercise.name?.trim(),
+            description: exercise.description?.trim() || '',
+            sets: Math.max(1, parseInt(exercise.sets) || 3),
+            reps: Math.max(1, parseInt(exercise.reps) || 10),
+            duration: Math.max(0, parseInt(exercise.duration) || 0),
+            restTime: Math.max(0, parseInt(exercise.restTime) || 60),
+            weight: Math.max(0, parseFloat(exercise.weight) || 0),
+            notes: exercise.notes?.trim() || '',
+            mediaUrl: exercise.mediaUrl || ''
+        }));
+    }
+
+    // Process optional fields
+    req.body.isPublic = req.body.isPublic ?? false;
+    req.body.tags = Array.isArray(req.body.tags) ? req.body.tags : [];
+    req.body.title = req.body.title?.trim();
+    req.body.description = req.body.description?.trim();
+
+    // Calculate estimated duration
+    const totalDuration = req.body.exercises?.reduce((total: number, exercise: any) => {
+        const setDuration = (exercise.duration || 0) + (exercise.restTime || 60);
+        return total + (setDuration * exercise.sets);
+    }, 0) || 0;
+    
+    req.body.estimatedDuration = Math.ceil(totalDuration / 60); // Convert seconds to minutes
+
+    // Create routine
     const routine = await Routine.create(req.body);
 
     res.status(201).json({
@@ -112,25 +181,58 @@ export const createRoutine = asyncHandler(async (req: Request, res: Response) =>
  * @route   PUT /api/v1/routines/:id
  * @access  Private
  */
-export const updateRoutine = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+export const updateRoutine = asyncHandler(async (req: Request, res: Response) => {
     let routine = await Routine.findById(req.params.id);
 
     if (!routine) {
-        return next(new AppError(`Routine not found with id ${req.params.id}`, 404));
+        throw new AppError(`Routine not found with id ${req.params.id}`, 404);
     }
 
-    // Make sure user owns the routine
-    if (routine.user._id.toString() !== req.user!._id.toString()) {
-        return next(new AppError('Not authorized to update this routine', 403));
+    // Check ownership
+    if (routine.user.toString() !== req.user!._id.toString()) {
+        throw new AppError('Not authorized to update this routine', 403);
     }
+
+    // Process exercises array if provided
+    if (Array.isArray(req.body.exercises)) {
+        req.body.exercises = req.body.exercises.map((exercise: any) => ({
+            name: exercise.name?.trim(),
+            description: exercise.description?.trim() || '',
+            sets: Math.max(1, parseInt(exercise.sets) || 3),
+            reps: Math.max(1, parseInt(exercise.reps) || 10),
+            duration: Math.max(0, parseInt(exercise.duration) || 0),
+            restTime: Math.max(0, parseInt(exercise.restTime) || 60),
+            weight: Math.max(0, parseFloat(exercise.weight) || 0),
+            notes: exercise.notes?.trim() || '',
+            mediaUrl: exercise.mediaUrl || ''
+        }));
+
+        // Recalculate estimated duration if exercises are updated
+        const totalDuration = req.body.exercises.reduce((total: number, exercise: any) => {
+            const setDuration = (exercise.duration || 0) + (exercise.restTime || 60);
+            return total + (setDuration * exercise.sets);
+        }, 0);
+        
+        req.body.estimatedDuration = Math.ceil(totalDuration / 60); // Convert seconds to minutes
+    }
+
+    // Process other fields if provided
+    if (req.body.title) req.body.title = req.body.title.trim();
+    if (req.body.description) req.body.description = req.body.description.trim();
+    if (typeof req.body.isPublic === 'boolean') req.body.isPublic = req.body.isPublic;
+    if (Array.isArray(req.body.tags)) req.body.tags = req.body.tags;
 
     // Update routine
-    routine = await Routine.findByIdAndUpdate(req.params.id, req.body, {
-        new: true,
-        runValidators: true
-    });
+    routine = await Routine.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        {
+            new: true,
+            runValidators: true
+        }
+    );
 
-    res.status(200).json({
+    res.json({
         success: true,
         data: routine
     });

@@ -1,145 +1,111 @@
 import mongoose from 'mongoose';
+import { IExercise } from './routineModel';
 
-export interface IExerciseLog {
-    exercise: string;
-    sets: {
-        weight: number;
-        reps: number;
-        duration: number; // in seconds
-    }[];
-    notes: string;
+export interface ICompletedExercise extends IExercise {
+    completed: boolean;
+    actualSets: number;
+    actualReps: number;
+    actualWeight?: number;
+    notes?: string;
 }
 
-export interface IWorkoutLog extends mongoose.Document {
-    _id: mongoose.Schema.Types.ObjectId;
-    user: mongoose.Schema.Types.ObjectId;
-    routine: mongoose.Schema.Types.ObjectId;
-    title: string;
-    exerciseLogs: IExerciseLog[];
-    duration: number; // in minutes
-    caloriesBurned: number;
-    rating: number; // 1-5 scale
-    notes: string;
-    mood: string;
-    feelingScore: number; // 1-10 scale
-    mediaUrls: string[];
-    location: {
-        type: string;
-        coordinates: number[];
-    };
+export interface IWorkoutLog {
+    _id: mongoose.Types.ObjectId;
+    user: mongoose.Types.ObjectId;
+    routine: mongoose.Types.ObjectId;
+    startTime: Date;
+    endTime: Date;
+    duration: number; // in seconds
+    exercises: ICompletedExercise[];
+    notes?: string;
+    rating?: number;
     createdAt: Date;
+    updatedAt: Date;
 }
 
-const ExerciseLogSchema = new mongoose.Schema({
-    exercise: {
+const CompletedExerciseSchema = new mongoose.Schema({
+    name: {
         type: String,
         required: [true, 'Exercise name is required']
     },
-    sets: [
-        {
-            weight: {
-                type: Number,
-                default: 0
-            },
-            reps: {
-                type: Number,
-                default: 0
-            },
-            duration: {
-                type: Number,
-                default: 0
-            }
-        }
-    ],
-    notes: {
-        type: String,
-        default: ''
-    }
+    description: String,
+    sets: {
+        type: Number,
+        required: [true, 'Number of sets is required']
+    },
+    reps: {
+        type: Number,
+        required: [true, 'Number of reps is required']
+    },
+    duration: Number,
+    restTime: Number,
+    weight: Number,
+    completed: {
+        type: Boolean,
+        default: false
+    },
+    actualSets: {
+        type: Number,
+        required: [true, 'Actual sets completed is required']
+    },
+    actualReps: {
+        type: Number,
+        required: [true, 'Actual reps completed is required']
+    },
+    actualWeight: Number,
+    notes: String
 });
 
-const WorkoutLogSchema = new mongoose.Schema(
-    {
-        user: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
-            required: [true, 'Workout log must belong to a user']
-        },
-        routine: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Routine'
-            // Not required as user might create a custom workout on the fly
-        },
-        title: {
-            type: String,
-            required: [true, 'Please provide a workout title'],
-            trim: true
-        },
-        exerciseLogs: [ExerciseLogSchema],
-        duration: {
-            type: Number,
-            default: 0
-        },
-        caloriesBurned: {
-            type: Number,
-            default: 0
-        },
-        rating: {
-            type: Number,
-            min: [1, 'Rating must be at least 1'],
-            max: [5, 'Rating cannot be more than 5'],
-            default: 3
-        },
-        notes: {
-            type: String,
-            default: ''
-        },
-        mood: {
-            type: String,
-            enum: ['energetic', 'good', 'neutral', 'tired', 'exhausted', ''],
-            default: ''
-        },
-        feelingScore: {
-            type: Number,
-            min: 1,
-            max: 10,
-            default: 5
-        },
-        mediaUrls: {
-            type: [String],
-            default: []
-        },
-        location: {
-            type: {
-                type: String,
-                enum: ['Point'],
-                default: 'Point'
-            },
-            coordinates: {
-                type: [Number],
-                default: [0, 0]
-            }
-        }
+const WorkoutLogSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: [true, 'User is required']
     },
-    {
-        timestamps: true,
-        toJSON: { virtuals: true },
-        toObject: { virtuals: true }
+    routine: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Routine',
+        required: [true, 'Routine is required']
+    },
+    startTime: {
+        type: Date,
+        required: [true, 'Start time is required']
+    },
+    endTime: {
+        type: Date,
+        required: [true, 'End time is required']
+    },
+    duration: {
+        type: Number,
+        required: [true, 'Duration is required']
+    },
+    exercises: [CompletedExerciseSchema],
+    notes: String,
+    rating: {
+        type: Number,
+        min: 1,
+        max: 5
     }
-);
+}, {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+});
 
-// Create index for geolocation
-WorkoutLogSchema.index({ location: '2dsphere' });
+// Indexes for better query performance
+WorkoutLogSchema.index({ user: 1, startTime: -1 });
+WorkoutLogSchema.index({ routine: 1, startTime: -1 });
 
-// Populate user and routine references
-WorkoutLogSchema.pre(/^find/, function (this: mongoose.Query<any, any>, next) {
-    this.populate({
-        path: 'user',
-        select: 'name profilePicture'
-    }).populate({
-        path: 'routine',
-        select: 'title'
-    });
-    next();
+// Virtual for calculating progress
+WorkoutLogSchema.virtual('progress').get(function() {
+    if (!this.exercises.length) return 0;
+    const completed = this.exercises.filter(ex => ex.completed).length;
+    return Math.round((completed / this.exercises.length) * 100);
+});
+
+// Virtual for workout duration in minutes
+WorkoutLogSchema.virtual('durationMinutes').get(function() {
+    return Math.round(this.duration / 60);
 });
 
 export const WorkoutLog = mongoose.model<IWorkoutLog>('WorkoutLog', WorkoutLogSchema);
