@@ -1,4 +1,14 @@
 import axios from 'axios';
+import { 
+  User, 
+  RegisterUserData, 
+  LoginData, 
+  UserProfileData, 
+  UserSettings, 
+  Routine,
+  Challenge,
+  CompletedExercise
+} from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -36,7 +46,6 @@ api.interceptors.response.use(
       // If we're in a browser environment
       if (typeof window !== 'undefined') {
         localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
         
         // Redirect to login page
         window.location.href = '/login';
@@ -49,44 +58,59 @@ api.interceptors.response.use(
 
 // Auth service
 export const authService = {
-  login: async (email: string, password: string) => {
-    const response = await api.post('/auth/login', { email, password });
-    
+  login: async (credentials: { email: string, password: string }) => {
+    const response = await api.post<{ token: string; user: User }>('/users/login', credentials);
     if (response.data.token) {
       localStorage.setItem('authToken', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
     }
-    
     return response.data;
   },
-  
-  register: async (userData: any) => {
-    const response = await api.post('/auth/register', userData);
+
+  register: async (userData: { name: string; email: string; password: string }) => {
+    const response = await api.post<{ token: string; user: User }>('/users/register', userData);
+    if (response.data.token) {
+      localStorage.setItem('authToken', response.data.token);
+    }
     return response.data;
   },
-  
-  logout: () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
+
+  logout: async () => {
+    try {
+      await api.get('/users/logout');
+    } catch (error) {
+      // ignore
+    } finally {
+      localStorage.removeItem('authToken');
+    }
   },
   
-  getCurrentUser: () => {
+  getCurrentUser: (): User | null => {
     const userStr = localStorage.getItem('user');
     if (userStr) return JSON.parse(userStr);
     return null;
   },
   
-  isAuthenticated: () => {
+  isAuthenticated: (): boolean => {
     return localStorage.getItem('authToken') !== null;
   },
   
   forgotPassword: async (email: string) => {
-    const response = await api.post('/auth/forgot-password', { email });
+    const response = await api.post<{ success: boolean; message: string }>('/users/forgot-password', { email });
     return response.data;
   },
   
-  resetPassword: async (token: string, password: string) => {
-    const response = await api.post('/auth/reset-password', { token, password });
+  resetPassword: async (resetToken: string, password: string) => {
+    const response = await api.post<{ success: boolean; message: string }>(`/users/reset-password/${resetToken}`, { password });
+    return response.data;
+  },
+  
+  refreshToken: async () => {
+    const response = await api.post<{ token: string }>('/users/refresh-token');
+    
+    if (response.data.token) {
+      localStorage.setItem('authToken', response.data.token);
+    }
+    
     return response.data;
   },
 };
@@ -94,17 +118,31 @@ export const authService = {
 // User service
 export const userService = {
   getUserProfile: async () => {
-    const response = await api.get('/users/profile');
+    const response = await api.get<{ success: boolean; data: User }>('/users/me');
+    return { user: response.data.data };
+  },
+  
+  updateUserProfile: async (userData: UserProfileData) => {
+    const response = await api.put<{ success: boolean; data: User }>('/users/update-details', userData);
+    return { user: response.data.data };
+  },
+  
+  updateUserSettings: async (settings: UserSettings) => {
+    const response = await api.put<{ success: boolean }>('/users/privacy', settings);
     return response.data;
   },
   
-  updateUserProfile: async (userData: any) => {
-    const response = await api.put('/users/profile', userData);
-    return response.data;
+  uploadProfilePicture: async (formData: FormData) => {
+    const response = await api.put<{ success: boolean; data: User }>(
+      '/users/profile-picture',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return { user: response.data.data };
   },
   
-  updateUserSettings: async (settings: any) => {
-    const response = await api.put('/users/settings', settings);
+  updatePassword: async (data: { currentPassword: string; newPassword: string }) => {
+    const response = await api.put<{ success: boolean; message?: string }>('/users/update-password', data);
     return response.data;
   },
 };

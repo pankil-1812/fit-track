@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/auth-context"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,11 +21,6 @@ import {
 import { useTheme } from "next-themes"
 
 // Type definitions
-interface UserData {
-    name?: string;
-    email?: string;
-}
-
 interface NavSubItem {
     name: string;
     href: string;
@@ -43,71 +39,24 @@ export function Navbar() {
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
     const pathname = usePathname()
     const { setTheme } = useTheme()
-
-    // Authentication state management
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
-    const [user, setUser] = useState<UserData | null>(null)
+    const { isAuthenticated, user, logout } = useAuth()
 
     // Handle scroll event to add background blur on scroll
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 10)
         }
-
         window.addEventListener("scroll", handleScroll)
         return () => window.removeEventListener("scroll", handleScroll)
-    }, [])
-
-    // Check if user is authenticated on component mount and track auth state
-    useEffect(() => {
-        // Function to check auth state
-        const checkAuthState = () => {
-            const token = localStorage.getItem("authToken")
-            const userData = localStorage.getItem("user")
-            
-            if (token && userData) {
-                setIsAuthenticated(true)
-                try {
-                    setUser(JSON.parse(userData))
-                } catch (e) {
-                    console.error("Error parsing user data", e)
-                    // Reset invalid data
-                    localStorage.removeItem("user")
-                }
-            } else {
-                setIsAuthenticated(false)
-                setUser(null)
-            }
-        }
-        
-        // Initial check
-        checkAuthState()
-        
-        // Listen for storage events (login/logout in other tabs)
-        const handleStorageChange = () => {
-            checkAuthState()
-        }
-        
-        window.addEventListener('storage', handleStorageChange)
-        
-        // Clean up
-        return () => {
-            window.removeEventListener('storage', handleStorageChange)
-        }
     }, [])
 
     // Handle login (redirect to login page)
     const handleLogin = () => {
         window.location.href = "/login"
     }
-
-    // Handle logout
-    const handleLogout = () => {
-        localStorage.removeItem("authToken")
-        localStorage.removeItem("user")
-        setIsAuthenticated(false)
-        setUser(null)
-        // Redirect to home page after logout
+    // Handle logout using context
+    const handleLogout = async () => {
+        await logout()
         window.location.href = "/"
     }
 
@@ -147,15 +96,21 @@ export function Navbar() {
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen)
-    }
-
-    // Handle dropdown show/hide
+    }    // Handle dropdown show/hide
     const handleDropdownHover = (item: string) => {
-        setActiveDropdown(item)
+        setActiveDropdown(item);
     }
 
     const handleDropdownLeave = () => {
-        setActiveDropdown(null)
+        // Use a timeout to prevent flickering when moving between items
+        setTimeout(() => {
+            setActiveDropdown(null);
+        }, 100);
+    }
+    
+    // Helper function to determine if a dropdown should be shown
+    const shouldShowDropdown = (itemName: string, submenu: NavSubItem[] | undefined) => {
+        return activeDropdown === itemName && submenu && submenu.length > 0;
     }
 
     return (
@@ -167,7 +122,7 @@ export function Navbar() {
         >
             <div className="container mx-auto flex h-20 items-center justify-between px-4">
                 <div className="flex items-center gap-2">
-                    <Link href="/" className="flex items-center space-x-2 group">
+                    <Link href="/" className="flex items-center space-x-4 group">
                         <div className="relative">
                             <div className="absolute -inset-1 bg-gradient-to-r from-primary to-blue-500 rounded-full blur-sm opacity-70 group-hover:opacity-100 transition-all duration-300"></div>
                             <div className="relative bg-background rounded-full p-2">
@@ -186,18 +141,17 @@ export function Navbar() {
                             <span> Pro</span>
                         </motion.span>
                     </Link>
-                </div>
-
-                {/* Desktop Navigation */}
-                <nav className="hidden md:flex gap-1">
-                    {navItems.map((item) => (
-                        <div
-                            key={item.href}
-                            className="relative"
-                            onMouseEnter={() => handleDropdownHover(item.name)}
-                            onMouseLeave={handleDropdownLeave}
-                        >
-                            <Link
+                </div>                {/* Desktop Navigation - Only show when authenticated */}
+                {isAuthenticated && (
+                    <nav className="hidden md:flex gap-1">
+                        {navItems.map((item) => (
+                            <div
+                                key={item.href}
+                                className="relative"
+                                onMouseEnter={() => handleDropdownHover(item.name)}
+                                onMouseLeave={handleDropdownLeave}
+                            >
+                                <Link
                                 href={item.href}
                                 className={`flex items-center text-sm font-medium px-4 py-2 rounded-full transition-all duration-200 hover:bg-primary/10 ${pathname === item.href || pathname.startsWith(item.href + '/')
                                         ? "text-primary"
@@ -208,10 +162,8 @@ export function Navbar() {
                                 {item.submenu && item.submenu.length > 0 && (
                                     <ChevronDown className="ml-1 h-4 w-4" />
                                 )}
-                            </Link>
-
-                            {/* Dropdown Menu */}
-                            {item.submenu && item.submenu.length > 0 && activeDropdown === item.name && (
+                            </Link>                            {/* Dropdown Menu */}
+                            {shouldShowDropdown(item.name, item.submenu) && (
                                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 z-50 min-w-[200px]">
                                     <motion.div
                                         initial={{ opacity: 0, y: -5 }}
@@ -230,11 +182,11 @@ export function Navbar() {
                                             </Link>
                                         ))}
                                     </motion.div>
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </nav>
+                                </div>                            )}
+                            </div>
+                        ))}
+                    </nav>
+                )}
 
                 <div className="flex items-center gap-3">
                     {/* Notification Button - only show when authenticated */}
@@ -368,10 +320,9 @@ export function Navbar() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
-                    >
-                        <div className="relative z-20 grid gap-6 rounded-2xl bg-background/50 p-6 shadow-sm border border-primary/10">
+                    >                        <div className="relative z-20 grid gap-6 rounded-2xl bg-background/50 p-6 shadow-sm border border-primary/10">
                             <nav className="grid grid-flow-row auto-rows-max text-sm gap-2">
-                                {navItems.map((item) => (
+                                {isAuthenticated && navItems.map((item) => (
                                     <div key={item.name} className="space-y-1">
                                         <Link
                                             href={item.href}

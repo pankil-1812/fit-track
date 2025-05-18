@@ -146,12 +146,15 @@ export const updateDetails = asyncHandler(async (req: Request, res: Response, ne
     const fieldsToUpdate = {
         name: req.body.name,
         email: req.body.email,
+        username: req.body.username, // Added
         bio: req.body.bio,
         height: req.body.height,
         weight: req.body.weight,
         dateOfBirth: req.body.dateOfBirth,
         gender: req.body.gender,
-        fitnessGoals: req.body.fitnessGoals,
+        fitnessGoal: req.body.fitnessGoal, // Added (singular)
+        fitnessLevel: req.body.fitnessLevel, // Added
+        fitnessGoals: req.body.fitnessGoals, // Keep for array support
         injuries: req.body.injuries,
         activityLevel: req.body.activityLevel
     };

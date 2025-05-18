@@ -1,6 +1,72 @@
 // Types for FitTrack Pro Application
 // Contains all TypeScript interfaces for data models used across the app
 
+// User related types
+export interface User {
+  _id: string;
+  name: string;
+  email: string;
+  username?: string;
+  profilePicture?: string;
+  bio?: string;
+  height?: number;
+  weight?: number;
+  dateOfBirth?: string;
+  gender?: string;
+  fitnessGoal?: string;
+  fitnessGoals?: string[];
+  fitnessLevel?: string;
+  injuries?: string[];
+  activityLevel?: string;
+  privacySettings?: {
+    profileVisibility: string;
+    activityVisibility: string;
+    showInLeaderboards: boolean;
+  };
+  role?: string;
+  twoFactorEnabled?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RegisterUserData {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword?: string;
+  fitnessGoal?: string;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+export interface UserProfileData {
+  name?: string;
+  email?: string;
+  username?: string;
+  profilePicture?: string;
+  bio?: string;
+  height?: number;
+  weight?: number;
+  dateOfBirth?: string;
+  gender?: string;
+  fitnessGoal?: string;
+  fitnessGoals?: string[];
+  fitnessLevel?: string;
+  injuries?: string[];
+  activityLevel?: string;
+}
+
+export interface UserSettings {
+  profileVisibility: 'public' | 'friends' | 'private';
+  activityVisibility: 'public' | 'friends' | 'private';
+  showInLeaderboards: boolean;
+  notificationsEmail?: boolean;
+  notificationsPush?: boolean;
+}
+
 // Routine related types
 export interface Routine {
   id: number;

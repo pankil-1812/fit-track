@@ -30,6 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useState } from "react"
+import { useAuth } from "@/lib/auth-context"
 
 // Form validation schema
 const registerFormSchema = z.object({
@@ -59,30 +61,46 @@ export default function Register() {
     resolver: zodResolver(registerFormSchema),
     defaultValues,
   })
-
+  // State for loading and error handling
+  const [isLoading, setIsLoading] = useState(false)
+  const [registerError, setRegisterError] = useState("")
+  const { register } = useAuth();
+  
   // Handle form submission
-  function onSubmit(data: RegisterFormValues) {
-    // In a real app, you would call your backend API here
-    console.log(data)
-    // TODO: Add API call to register
+  async function onSubmit(data: RegisterFormValues) {
+    setIsLoading(true)
+    setRegisterError("")
+    try {
+      await register(data.fullName, data.email, data.password)
+      window.location.href = "/routines"
+    } catch (error) {
+      setRegisterError("Registration failed. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="container mx-auto flex h-screen w-full flex-col items-center justify-center">
+    <div className="container mx-auto flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-background via-blue-50/60 to-blue-100/80 dark:from-background dark:via-blue-950/60 dark:to-blue-900/80">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <Card>
+        <Card className="shadow-xl border-0 bg-gradient-to-br from-background via-white/60 to-blue-100/80 dark:from-background dark:via-blue-950/60 dark:to-blue-900/80">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Create an account</CardTitle>
             <CardDescription>
               Enter your information to create your account
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {registerError && (
+              <div className="mb-4 p-3 text-sm border border-red-300 bg-red-50 text-red-600 rounded">
+                {registerError}
+              </div>
+            )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -179,9 +197,8 @@ export default function Register() {
                       <FormMessage />
                     </FormItem>
                   )}
-                />
-                <Button type="submit" className="w-full">
-                  Create Account
+                />                <Button type="submit" className="w-full bg-gradient-to-r from-primary to-blue-600 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200" disabled={isLoading}>
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
                 </Button>
               </form>
             </Form>

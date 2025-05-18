@@ -145,6 +145,22 @@ const UserSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
             select: false
+        },
+        username: {
+            type: String,
+            unique: true,
+            sparse: true,
+            trim: true,
+            maxlength: [30, 'Username cannot be more than 30 characters']
+        },
+        fitnessGoal: {
+            type: String,
+            default: ''
+        },
+        fitnessLevel: {
+            type: String,
+            enum: ['beginner', 'intermediate', 'advanced', ''],
+            default: ''
         }
     },
     {

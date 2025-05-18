@@ -24,6 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { useAuth } from "@/lib/auth-context"
 
 // Form validation schema
 const loginFormSchema = z.object({
@@ -42,32 +43,21 @@ export default function Login() {
   // State for loading and error handling
   const [isLoading, setIsLoading] = useState(false)
   const [loginError, setLoginError] = useState("")
+  const { login } = useAuth();
   
   // Initialize form
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     defaultValues,
   })
-    // Handle form submission
+  // Handle form submission
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
     setLoginError("")
-    
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 800))
-      
-      // Simulate successful login for demo purposes
-      localStorage.setItem("authToken", "demo-token-123")
-      localStorage.setItem("user", JSON.stringify({
-        name: "Demo User",
-        email: data.email,
-      }))
-      
-      // Redirect to dashboard
+      await login(data.email, data.password)
       window.location.href = "/routines"
     } catch (error) {
-      console.error("Login error:", error)
       setLoginError("Invalid email or password. Please try again.")
     } finally {
       setIsLoading(false)
@@ -75,20 +65,21 @@ export default function Login() {
   }
 
   return (
-    <div className="container mx-auto flex h-screen w-full flex-col items-center justify-center">
+    <div className="container mx-auto flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-background via-blue-50/60 to-blue-100/80 dark:from-background dark:via-blue-950/60 dark:to-blue-900/80">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <Card>
+        <Card className="shadow-xl border-0 bg-gradient-to-br from-background via-white/60 to-blue-100/80 dark:from-background dark:via-blue-950/60 dark:to-blue-900/80">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Sign in</CardTitle>
             <CardDescription>
               Enter your email and password to login to your account
             </CardDescription>
-          </CardHeader>          <CardContent>
+          </CardHeader>
+          <CardContent>
             {loginError && (
               <div className="mb-4 p-3 text-sm border border-red-300 bg-red-50 text-red-600 rounded">
                 {loginError}
@@ -131,7 +122,7 @@ export default function Login() {
                       <FormMessage />
                     </FormItem>
                   )}
-                />                <Button type="submit" className="w-full" disabled={isLoading}>
+                />                <Button type="submit" className="w-full bg-gradient-to-r from-primary to-blue-600 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200" disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <span className="animate-spin mr-2">⏳</span>
