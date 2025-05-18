@@ -9,17 +9,20 @@ import { formatTime } from '@/lib/utils';
 interface WorkoutExerciseProps {
   exercise: Exercise;
   onComplete: (completed: CompletedExercise) => void;
-  onSkip: () => void;
+  onSkipSet: (skipped: CompletedExercise) => void;
   showControls?: boolean;
+  isPaused?: boolean;
+  onTogglePause?: () => void;
 }
 
 export function WorkoutExercise({ 
   exercise,
   onComplete,
-  onSkip,
-  showControls = true
+  onSkipSet,
+  showControls = true,
+  isPaused = true,
+  onTogglePause
 }: WorkoutExerciseProps) {
-  const [isPaused, setIsPaused] = useState(true);
   const [currentSet, setCurrentSet] = useState(1);
   const [currentRep, setCurrentRep] = useState(0);
   const [timeLeft, setTimeLeft] = useState(exercise.duration || 0);
@@ -28,7 +31,6 @@ export function WorkoutExercise({
 
   // Reset state when exercise changes
   useEffect(() => {
-    setIsPaused(true);
     setCurrentSet(1);
     setCurrentRep(0);
     setTimeLeft(exercise.duration || 0);
@@ -39,55 +41,101 @@ export function WorkoutExercise({
   // Timer effect
   useEffect(() => {
     if (isPaused) return;
-
     const interval = setInterval(() => {
-      if (isResting) {
-        setRestTimeLeft(prev => {
-          if (prev <= 1) {
+      setRestTimeLeft(prevRest => {
+        if (isResting) {
+          if (prevRest <= 1) {
             setIsResting(false);
-            setCurrentSet(prev => {
-              if (prev >= exercise.sets) {
-                // Exercise complete
-                setIsPaused(true);
-                onComplete({
-                  ...exercise,
-                  completed: true,
-                  actualSets: exercise.sets,
-                  actualReps: exercise.reps,
-                  notes: ""
-                });
-                return prev;
+            setCurrentSet(prevSet => {
+              if (prevSet >= exercise.sets) {
+                setTimeout(() => {
+                  onComplete({
+                    ...exercise,
+                    completed: true,
+                    actualSets: exercise.sets,
+                    actualReps: exercise.reps,
+                    actualWeight: exercise.weight || 0,
+                    notes: ""
+                  });
+                }, 500);
+                return prevSet;
               }
-              return prev + 1;
+              setTimeLeft(exercise.duration || 0);
+              setCurrentRep(0);
+              return prevSet + 1;
             });
-            return exercise.restTime || 60;
-          }
-          return prev - 1;
-        });
-      } else if (exercise.duration) {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            setIsResting(true);
-            return exercise.duration || 0;
-          }
-          return prev - 1;
-        });
-      } else {
-        setCurrentRep(prev => {
-          if (prev >= exercise.reps) {
-            setIsResting(true);
-            setCurrentRep(0);
             return 0;
           }
-          return prev + 1;
-        });
-      }
+          return prevRest - 1;
+        }
+        return prevRest;
+      });
+      setTimeLeft(prevTime => {
+        if (!isResting && exercise.duration) {
+          if (prevTime <= 1) {
+            setIsResting(true);
+            setRestTimeLeft(exercise.restTime || 60);
+            return 0;
+          }
+          return prevTime - 1;
+        }
+        return prevTime;
+      });
+      setCurrentRep(prevRep => {
+        if (!isResting && !exercise.duration) {
+          if (prevRep >= exercise.reps - 1) {
+            setIsResting(true);
+            setRestTimeLeft(exercise.restTime || 60);
+            return 0;
+          }
+          return prevRep + 1;
+        }
+        return prevRep;
+      });
     }, 1000);
-
     return () => clearInterval(interval);
   }, [isPaused, isResting, exercise, onComplete]);
 
-  const togglePause = () => setIsPaused(prev => !prev);
+  // Skip set handler
+  const handleSkipSet = () => {
+    // Mark current set as skipped
+    onSkipSet({
+      ...exercise,
+      completed: false,
+      actualSets: 1,
+      actualReps: 0,
+      actualWeight: 0,
+      notes: "Skipped set"
+    });
+    // Move to next set
+    setCurrentSet(prev => {
+      if (prev >= exercise.sets) {
+        // If last set, complete exercise
+        setTimeout(() => {
+          onComplete({
+            ...exercise,
+            completed: true,
+            actualSets: exercise.sets,
+            actualReps: exercise.reps,
+            actualWeight: exercise.weight || 0,
+            notes: ""
+          });
+        }, 500);
+        return prev;
+      }
+      return prev + 1;
+    });
+    setCurrentRep(0);
+    setIsResting(false);
+    setTimeLeft(exercise.duration || 0);
+    setRestTimeLeft(0);
+  };
+
+  const togglePause = () => {
+    if (onTogglePause) {
+      onTogglePause();
+    }
+  };
 
   const progress = isResting 
     ? ((exercise.restTime || 60) - restTimeLeft) / (exercise.restTime || 60) * 100
@@ -135,9 +183,7 @@ export function WorkoutExercise({
               <div className="text-sm font-medium text-muted-foreground">Weight</div>
               <div className="text-2xl font-bold">{exercise.weight || 0}kg</div>
             </div>
-          </div>
-
-          {showControls && (
+          </div>          {showControls && (
             <div className="flex gap-2">
               <Button
                 size="lg"
@@ -147,22 +193,22 @@ export function WorkoutExercise({
                 {isPaused ? (
                   <>
                     <Play className="mr-2 h-4 w-4" />
-                    Start
+                    {isResting ? "Start Rest Timer" : "Start Exercise"}
                   </>
                 ) : (
                   <>
                     <Pause className="mr-2 h-4 w-4" />
-                    Pause
+                    {isResting ? "Pause Rest" : "Pause Exercise"}
                   </>
                 )}
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                onClick={onSkip}
+                onClick={handleSkipSet}
               >
                 <SkipForward className="mr-2 h-4 w-4" />
-                Skip
+                Skip Set
               </Button>
             </div>
           )}

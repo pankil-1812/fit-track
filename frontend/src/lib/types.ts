@@ -158,3 +158,14 @@ export interface CreateWorkoutLogData {
 export interface UpdateWorkoutLogData extends Partial<CreateWorkoutLogData> {
   _id: string;
 }
+
+export interface RoutineStats {
+  totalWorkouts: number;
+  totalDuration: number;
+  averageDuration: number;
+}
+
+export interface RoutineWithHistory extends Routine {
+  workoutHistory?: WorkoutLog[];
+  stats?: RoutineStats;
+}

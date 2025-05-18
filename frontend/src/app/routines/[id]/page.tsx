@@ -1,8 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { format } from "date-fns"
+import React from "react"
 import {
   ArrowLeft,
   Clock,
@@ -19,8 +17,12 @@ import {
   X,
   Info,
   Pause,
-  SkipForward
+  SkipForward,
+  Plus
 } from "lucide-react"
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { format } from "date-fns"
 import { useToast } from "@/components/ui/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
@@ -36,7 +38,6 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -62,7 +63,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Tabs,
@@ -71,10 +71,12 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { WorkoutExercise } from "@/components/ui/workout-exercise"
-import { ProgressCircle } from "@/components/ui/progress-circle"
 
-export default function RoutineDetailPage({ params }: { params: { id: string } }) {  const { routine, status } = useRoutine(params.id)
-  const { workoutLogs } = useRoutineWorkoutHistory(params.id)
+export default function RoutineDetailPage({ params }: { params: { id: string } }) {
+  const unwrappedParams = React.use(params)
+  const routineId = unwrappedParams.id
+  const { routine, status } = useRoutine(routineId)
+  const { workoutLogs } = useRoutineWorkoutHistory(routineId)
   const {
     isActive: workoutInProgress,
     isPaused,
@@ -87,8 +89,9 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
     completeExercise,
     finishWorkout
   } = useWorkoutSession(routine)
-  
+
   const { toast } = useToast()
+
   // UI State
   const [isStarred, setIsStarred] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -130,48 +133,26 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
     }
   }, [routine])
 
-  // Handle routine actions
-  const handleSaveRoutine = async () => {
-    if (!routine) return;
-    try {
-      await routineService.updateRoutine(params.id, {
-        _id: params.id,
-        ...routineForm
-      });
-      toast({
-        title: "Success",
-        description: "Your routine has been updated successfully"
-      });
-      setShowEditRoutineModal(false);
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to update routine",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDeleteRoutine = async () => {
-    setIsDeleting(true);
-    try {
-      await routineService.deleteRoutine(params.id);
-      window.location.href = "/routines";
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to delete routine",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteDialog(false);
-    }
-  };
-
   // Handle exercise actions
-  const handleSaveExercise = async () => {
-    if (!routine) return;
+  const handleSaveExercise = () => {
+    if (!routine) {
+      toast({
+        title: "Error",
+        description: "Routine not found",
+        
+      });
+      return;
+    }
+
+    // Validate exercise form
+    if (!exerciseForm.name) {
+      toast({
+        title: "Error",
+        description: "Exercise name is required",
+        
+      });
+      return;
+    }
 
     const exercises = [...routine.exercises];
     if (editingExerciseIndex !== null) {
@@ -180,62 +161,59 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
       exercises.push(exerciseForm);
     }
 
-    try {
-      await routineService.updateRoutine(params.id, {
-        _id: params.id,
-        exercises
-      });
-      toast({
-        title: "Success",
-        description: editingExerciseIndex !== null ? "Exercise updated" : "Exercise added"
-      });
-      setShowExerciseModal(false);
-      setEditingExerciseIndex(null);
-      setExerciseForm({
-        name: "",
-        description: "",
-        sets: 3,
-        reps: 10,
-        duration: 0,
-        restTime: 60,
-        weight: 0,
-        notes: ""
-      });
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to save exercise",
-        variant: "destructive"
-      });
-    }
-  };
+    // Update routine with new exercises
+    routineService.updateRoutine(routineId, {
+      _id: routineId,
+      title: routine.title,
+      description: routine.description,
+      category: routine.category,
+      difficulty: routine.difficulty,
+      isPublic: routine.isPublic,
+      exercises
+    })
+      .then(() => {
+        toast({
+          title: "Success",
+          description: editingExerciseIndex !== null ? "Exercise updated" : "Exercise added"
+        });
 
-  const handleDeleteExercise = async (index: number) => {
-    if (!routine) return;
-    const exercises = [...routine.exercises];
-    exercises.splice(index, 1);
+        // Refresh routine data to update the UI
+        return routineService.getRoutine(routineId);
+      })
+      .then(() => {
+        // Force refresh by reloading the page
+        window.location.reload();
 
-    try {
-      await routineService.updateRoutine(params.id, {
-        _id: params.id,
-        exercises
+        setShowExerciseModal(false);
+        setEditingExerciseIndex(null);
+        setExerciseForm({
+          name: "",
+          description: "",
+          sets: 3,
+          reps: 10,
+          duration: 0,
+          restTime: 60,
+          weight: 0,
+          notes: ""
+        });
+      })
+      .catch((error) => {
+        console.error("Error saving exercise:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save exercise",
+          
+        });
       });
-      toast({
-        title: "Exercise deleted",
-        description: "The exercise has been removed from this routine"
-      });
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to delete exercise",
-        variant: "destructive"
-      });
-    }
   };
 
   // Handle workout actions
   const handleStartWorkout = () => {
     startWorkout();
+    toast({
+      title: "Workout started",
+      description: "Your workout session has begun!"
+    });
   };
 
   const handleSkipExercise = () => {
@@ -244,37 +222,138 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
 
   const handleCompleteExercise = (completedExercise: CompletedExercise) => {
     completeExercise(completedExercise);
+    toast({
+      title: "Exercise completed",
+      description: "Moving to the next exercise"
+    });
   };
 
-  const handleFinishWorkout = async () => {
-    try {
-      await finishWorkout();
-      toast({
-        title: "Success",
-        description: "Your workout has been logged successfully"
+  const handleFinishWorkout = () => {
+    finishWorkout()
+      .then((result) => {
+        if (result) {
+          toast({
+            title: "Workout completed",
+            description: "Great job! Your progress has been saved."
+          });
+
+          // Refresh routine data to update the history
+          return routineService.getRoutine(routineId);
+        }
+        return null;
+      })
+      .then((updatedRoutineData) => {
+        if (updatedRoutineData && updatedRoutineData.data) {
+          window.location.reload();
+        }
+      })
+      .catch((error) => {
+        console.error("Error finishing workout:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save workout progress. Please try again.",
+          
+        });
       });
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to save workout",
-        variant: "destructive"
-      });
-    }
   };
 
-  if (status === "loading") {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+  const handleDeleteExercise = (index: number) => {
+    if (!routine) return;
+    const exercises = [...routine.exercises];
+    exercises.splice(index, 1);
+
+    routineService.updateRoutine(routineId, {
+      _id: routineId,
+      exercises
+    })
+      .then(() => {
+        toast({
+          title: "Exercise deleted",
+          description: "The exercise has been removed from this routine"
+        });
+        // Refresh the page to show updated exercises
+        window.location.reload();
+      })
+      .catch((error) => {
+        console.error("Error deleting exercise:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete exercise",
+          
+        });
+      });
+  };
+
+  const handleSaveRoutine = () => {
+    if (!routine) return;
+
+    // Always send exercises when updating
+    routineService.updateRoutine(routineId, {
+      _id: routineId,
+      ...routineForm,
+      exercises: routine.exercises
+    })
+      .then(() => {
+        toast({
+          title: "Success",
+          description: "Your routine has been updated successfully"
+        });
+        setShowEditRoutineModal(false);
+        // Refresh the page to show updated routine
+        window.location.reload();
+      })
+      .catch((error) => {
+        console.error("Error updating routine:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update routine",
+          
+        });
+      });
+  };
+
+  const handleDeleteRoutine = () => {
+    setIsDeleting(true);
+
+    routineService.deleteRoutine(routineId)
+      .then(() => {
+        window.location.href = "/routines";
+      })
+      .catch((error) => {
+        console.error("Error deleting routine:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete routine",
+          
+        });
+      })
+      .finally(() => {
+        setIsDeleting(false);
+        setShowDeleteDialog(false);
+      });
+  };
+
+  // Add handleSkipSet function
+  const handleSkipSet = (skippedSet: CompletedExercise) => {
+    // Add skipped set to completedExercises
+    completeExercise(skippedSet);
+    toast({
+      title: "Set skipped",
+      description: "This set was marked as skipped."
+    });
+  };
+
+  // Error and loading handling
+  if (status === "loading" || status === "idle") {
+    return <div className="flex flex-col items-center justify-center min-h-[40vh] text-lg">Loading routine...</div>;
   }
-
-  if (!routine) {
+  if (!routine || status === "error") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Routine not found</h2>
-        <p className="text-muted-foreground mb-4">This routine might have been deleted or you don't have access to it.</p>
-        <Button asChild>
-          <Link href="/routines">Back to Routines</Link>
-        </Button>
+      <div className="flex flex-col items-center justify-center min-h-[40vh]">
+        <AlertCircle className="h-10 w-10 text-destructive mb-2" />
+        <h2 className="text-xl font-bold mb-2">Routine not found</h2>
+        <p className="text-muted-foreground mb-4">This routine might have been deleted or you don&apos;t have access to it.</p>
+        <Link href="/routines" className="text-primary underline">Back to Routines</Link>
       </div>
     );
   }
@@ -398,31 +477,32 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
                   key={currentExerciseIndex}
                   exercise={routine.exercises[currentExerciseIndex]}
                   onComplete={handleCompleteExercise}
-                  onSkip={handleSkipExercise}
-                  showControls={!isPaused}
+                  onSkipSet={handleSkipSet}
+                  showControls={true}
+                  isPaused={isPaused}
+                  onTogglePause={togglePause}
                 />
               )}
 
               {/* Control Buttons */}
-              <div className="flex gap-4">
-                <Button
-                  className="flex-1"
-                  size="lg"
-                  variant={isPaused ? "default" : "outline"}
-                  onClick={togglePause}
-                >
-                  {isPaused ? (
-                    <>
-                      <PlayCircle className="mr-2 h-5 w-5" />
-                      Start Exercise
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="mr-2 h-5 w-5" />
-                      Pause
-                    </>
-                  )}
-                </Button>
+              <div className="flex gap-4">              <Button
+                className="flex-1"
+                size="lg"
+                variant={isPaused ? "default" : "outline"}
+                onClick={togglePause}
+              >
+                {isPaused ? (
+                  <>
+                    <PlayCircle className="mr-2 h-5 w-5" />
+                    {completedExercises.length > 0 ? "Continue Workout" : "Start Exercise"}
+                  </>
+                ) : (
+                  <>
+                    <Pause className="mr-2 h-5 w-5" />
+                    Pause Workout
+                  </>
+                )}
+              </Button>
 
                 <Button
                   className="flex-1"
@@ -448,13 +528,36 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
           )}
 
           {/* Exercises List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Exercises</CardTitle>
-              <CardDescription>
-                {routine.exercises.length} exercise{routine.exercises.length !== 1 ? 's' : ''}
-              </CardDescription>
-            </CardHeader>
+          <Card>            <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Exercises</CardTitle>
+                <CardDescription>
+                  {routine.exercises.length} exercise{routine.exercises.length !== 1 ? 's' : ''}
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => {
+                  setExerciseForm({
+                    name: "",
+                    description: "",
+                    sets: 3,
+                    reps: 10,
+                    duration: 0,
+                    restTime: 60,
+                    weight: 0,
+                    notes: ""
+                  });
+                  setEditingExerciseIndex(null);
+                  setShowExerciseModal(true);
+                }}
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Exercise
+              </Button>
+            </div>
+          </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {routine.exercises.map((exercise, index) => (
@@ -492,10 +595,10 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
                         <div>
                           {exercise.sets} sets × {exercise.reps} reps
                         </div>
-                        {exercise.weight > 0 && (
+                        {(exercise.weight ?? 0) > 0 && (
                           <div>{exercise.weight}kg</div>
                         )}
-                        {exercise.duration > 0 && (
+                        {(exercise.duration ?? 0) > 0 && (
                           <div>{formatTime(exercise.duration)}</div>
                         )}
                       </div>
@@ -620,7 +723,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
                   }
                 />
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="reps">Reps</Label>
                 <Input
@@ -849,4 +952,4 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
       </Dialog>
     </div>
   );
-}
+};

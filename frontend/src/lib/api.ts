@@ -1,13 +1,19 @@
 import axios from 'axios';
-import { 
-  User, 
-  RegisterUserData, 
-  LoginData, 
-  UserProfileData, 
-  UserSettings, 
+import {
+  User,
+  RegisterUserData,
+  LoginData,
+  UserProfileData,
+  UserSettings,
   Routine,
-  Challenge,
-  CompletedExercise
+  Exercise,
+  CompletedExercise,
+  CreateRoutineData,
+  UpdateRoutineData,
+  WorkoutLog,
+  CreateWorkoutLogData,
+  UpdateWorkoutLogData,
+  Challenge
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -149,145 +155,85 @@ export const userService = {
 
 // Routines service
 export const routineService = {
-    getAllRoutines: async () => {
-        const response = await api.get<{
-            success: boolean;
-            count: number;
-            total: number;
-            pagination: { current: number; pages: number };
-            data: Routine[];
-        }>('/routines');
-        return response.data;
-    },
+  getAllRoutines: async () => {
+    const response = await api.get<{
+      success: boolean;
+      data: Routine[];
+    }>('/routines');
+    return response.data;
+  },
 
-    getRoutineById: async (id: string) => {
-        const response = await api.get<{
-            success: boolean;
-            data: Routine;
-        }>(`/routines/${id}`);
-        return response.data.data;
-    },
+  getRoutine: async (id: string) => {
+    const response = await api.get<{
+      success: boolean;
+      data: Routine;
+    }>(`/routines/${id}`);
+    return response.data;
+  },
 
-    createRoutine: async (routineData: CreateRoutineData) => {
-        // Ensure all required fields are present with proper formatting
-        const payload = {
-            title: routineData.title.trim(),
-            description: routineData.description.trim(),
-            category: routineData.category,
-            difficulty: routineData.difficulty,
-            isPublic: routineData.isPublic ?? false,
-            tags: routineData.tags || [],
-            exercises: routineData.exercises.map(exercise => ({
-                name: exercise.name.trim(),
-                description: exercise.description?.trim() || '',
-                sets: Math.max(1, exercise.sets || 3),
-                reps: Math.max(1, exercise.reps || 10),
-                duration: Math.max(0, exercise.duration || 0),
-                restTime: Math.max(0, exercise.restTime || 60),
-                weight: Math.max(0, exercise.weight || 0),
-                notes: exercise.notes?.trim() || '',
-                mediaUrl: exercise.mediaUrl || ''
-            }))
-        };
+  createRoutine: async (routineData: CreateRoutineData) => {
+    const response = await api.post<{
+      success: boolean;
+      data: Routine;
+    }>('/routines', {
+      ...routineData,
+      exercises: routineData.exercises.map(exercise => ({
+        ...exercise,
+        sets: Math.max(1, exercise.sets),
+        reps: Math.max(1, exercise.reps),
+        duration: exercise.duration ? Math.max(0, exercise.duration) : undefined,
+        restTime: exercise.restTime ? Math.max(0, exercise.restTime) : 60,
+        weight: exercise.weight ? Math.max(0, exercise.weight) : undefined
+      }))
+    });
+    return response.data;
+  },
 
-        // Validate the payload matches our requirements
-        if (!payload.title || !payload.description || !payload.category || !payload.difficulty) {
-            throw new Error('Missing required fields');
-        }
+  updateRoutine: async (id: string, routineData: UpdateRoutineData) => {
+    // Always send exercises field, even if not present in routineData
+    const exercises = routineData.exercises ?? [];
+    const response = await api.put<{
+      success: boolean;
+      data: Routine;
+    }>(`/routines/${id}`, {
+      ...routineData,
+      exercises: exercises.map(exercise => ({
+        ...exercise,
+        sets: Math.max(1, exercise.sets),
+        reps: Math.max(1, exercise.reps),
+        duration: exercise.duration ? Math.max(0, exercise.duration) : undefined,
+        restTime: exercise.restTime ? Math.max(0, exercise.restTime) : 60,
+        weight: exercise.weight ? Math.max(0, exercise.weight) : undefined
+      }))
+    });
+    return response.data;
+  },
 
-        if (!['beginner', 'intermediate', 'advanced'].includes(payload.difficulty)) {
-            throw new Error('Invalid difficulty level');
-        }
+  deleteRoutine: async (id: string) => {
+    const response = await api.delete<{
+      success: boolean;
+      data: Record<string, never>;
+    }>(`/routines/${id}`);
+    return response.data;
+  },
 
-        if (payload.exercises.length === 0) {
-            throw new Error('At least one exercise is required');
-        }
+  saveRoutine: async (id: string) => {
+    const response = await api.put<{
+      success: boolean;
+      saveCount: number;
+      data: Routine;
+    }>(`/routines/${id}/save`);
+    return response.data;
+  },
 
-        const response = await api.post<{
-            success: boolean;
-            data: Routine;
-        }>('/routines', payload);
-        return response.data.data;
-    },
-
-    updateRoutine: async (id: string, routineData: UpdateRoutineData) => {
-        // Only include fields that are present in the update data
-        const payload: Partial<CreateRoutineData> = {};
-
-        if (routineData.title !== undefined) {
-            payload.title = routineData.title.trim();
-        }
-        if (routineData.description !== undefined) {
-            payload.description = routineData.description.trim();
-        }
-        if (routineData.category !== undefined) {
-            payload.category = routineData.category;
-        }
-        if (routineData.difficulty !== undefined) {
-            payload.difficulty = routineData.difficulty;
-        }
-        if (routineData.isPublic !== undefined) {
-            payload.isPublic = routineData.isPublic;
-        }
-        if (routineData.tags !== undefined) {
-            payload.tags = routineData.tags;
-        }
-        if (routineData.exercises !== undefined) {
-            payload.exercises = routineData.exercises.map(exercise => ({
-                name: exercise.name.trim(),
-                description: exercise.description?.trim() || '',
-                sets: Math.max(1, exercise.sets || 3),
-                reps: Math.max(1, exercise.reps || 10),
-                duration: Math.max(0, exercise.duration || 0),
-                restTime: Math.max(0, exercise.restTime || 60),
-                weight: Math.max(0, exercise.weight || 0),
-                notes: exercise.notes?.trim() || '',
-                mediaUrl: exercise.mediaUrl || ''
-            }));
-        }
-
-        const response = await api.put<{
-            success: boolean;
-            data: Routine;
-        }>(`/routines/${id}`, payload);
-        return response.data.data;
-    },
-
-    deleteRoutine: async (id: string) => {
-        const response = await api.delete<{
-            success: boolean;
-            data: Record<string, never>;
-        }>(`/routines/${id}`);
-        return response.data;
-    },
-
-    likeRoutine: async (id: string) => {
-        const response = await api.put<{
-            success: boolean;
-            liked: boolean;
-            likeCount: number;
-            data: Routine;
-        }>(`/routines/${id}/like`);
-        return response.data;
-    },
-
-    saveRoutine: async (id: string) => {
-        const response = await api.put<{
-            success: boolean;
-            saveCount: number;
-            data: Routine;
-        }>(`/routines/${id}/save`);
-        return response.data;
-    },
-
-    searchRoutines: async (query: string) => {
-        const response = await api.get<{
-            success: boolean;
-            count: number;
-            data: Routine[];
-        }>(`/routines/search?q=${query}`);
-        return response.data;
-    },
+  searchRoutines: async (query: string) => {
+    const response = await api.get<{
+      success: boolean;
+      count: number;
+      data: Routine[];
+    }>(`/routines/search?q=${query}`);
+    return response.data;
+  },
 };
 
 // Workout logs service
@@ -299,15 +245,7 @@ export const workoutLogService = {
     }>('/workout-logs');
     return response.data;
   },
-  
-  getWorkoutLogById: async (id: string) => {
-    const response = await api.get<{
-      success: boolean;
-      data: WorkoutLog;
-    }>(`/workout-logs/${id}`);
-    return response.data;
-  },
-  
+
   getWorkoutLogsByDate: async (date: string) => {
     const response = await api.get<{
       success: boolean;
@@ -323,23 +261,51 @@ export const workoutLogService = {
     }>(`/workout-logs/routine/${routineId}`);
     return response.data;
   },
-  
+
   createWorkoutLog: async (logData: CreateWorkoutLogData) => {
+    // Validate exercise data
+    const validatedExercises = logData.exercises.map(exercise => ({
+      ...exercise,
+      actualSets: Math.max(0, exercise.actualSets),
+      actualReps: Math.max(0, exercise.actualReps),
+      actualWeight: exercise.actualWeight ? Math.max(0, exercise.actualWeight) : undefined,
+      completed: Boolean(exercise.completed)
+    }));
+
     const response = await api.post<{
       success: boolean;
       data: WorkoutLog;
-    }>('/workout-logs', logData);
+    }>('/workout-logs', {
+      ...logData,
+      duration: Math.max(0, logData.duration),
+      exercises: validatedExercises,
+      rating: logData.rating ? Math.max(1, Math.min(5, logData.rating)) : undefined
+    });
     return response.data;
   },
-  
+
   updateWorkoutLog: async (id: string, logData: UpdateWorkoutLogData) => {
+    // Validate exercise data if provided
+    const validatedExercises = logData.exercises?.map(exercise => ({
+      ...exercise,
+      actualSets: Math.max(0, exercise.actualSets),
+      actualReps: Math.max(0, exercise.actualReps),
+      actualWeight: exercise.actualWeight ? Math.max(0, exercise.actualWeight) : undefined,
+      completed: Boolean(exercise.completed)
+    }));
+
     const response = await api.put<{
       success: boolean;
       data: WorkoutLog;
-    }>(`/workout-logs/${id}`, logData);
+    }>(`/workout-logs/${id}`, {
+      ...logData,
+      duration: logData.duration ? Math.max(0, logData.duration) : undefined,
+      exercises: validatedExercises,
+      rating: logData.rating ? Math.max(1, Math.min(5, logData.rating)) : undefined
+    });
     return response.data;
   },
-  
+
   deleteWorkoutLog: async (id: string) => {
     const response = await api.delete<{
       success: boolean;

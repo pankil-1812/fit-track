@@ -5,7 +5,8 @@ import type {
   Exercise, 
   WorkoutLog, 
   CompletedExercise,
-  ApiStatus 
+  ApiStatus,
+  RoutineWithHistory 
 } from "@/lib/types";
 
 // Constants for API status
@@ -41,14 +42,28 @@ export function useRoutines() {
     fetchRoutines();
   }, []);
 
-  return { routines, status, error };
+  // Add mutate function to allow manual refresh
+  const mutate = async () => {
+    setStatus(API_STATUS.LOADING);
+    try {
+      const data = await routineService.getAllRoutines();
+      setRoutines(data.data);
+      setStatus(API_STATUS.SUCCESS);
+    } catch (err) {
+      console.error("Error fetching routines:", err);
+      setStatus(API_STATUS.ERROR);
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    }
+  };
+
+  return { routines, status, error, mutate };
 }
 
 /**
  * Hook for fetching a single routine by ID
  */
 export function useRoutine(id: string) {
-  const [routine, setRoutine] = useState<Routine | null>(null);
+  const [routine, setRoutine] = useState<RoutineWithHistory | null>(null);
   const [status, setStatus] = useState<ApiStatus>(API_STATUS.IDLE);
   const [error, setError] = useState<Error | null>(null);
 
@@ -56,8 +71,8 @@ export function useRoutine(id: string) {
     const fetchRoutine = async () => {
       setStatus(API_STATUS.LOADING);
       try {
-        const data = await routineService.getRoutineById(id);
-        setRoutine(data);
+        const data = await routineService.getRoutine(id);
+        setRoutine(data.data || data);
         setStatus(API_STATUS.SUCCESS);
       } catch (err) {
         console.error(`Error fetching routine with ID ${id}:`, err);
@@ -113,7 +128,21 @@ export function useWorkoutSession(routine: Routine | null) {
   const [completedExercises, setCompletedExercises] = useState<CompletedExercise[]>([]);
   const [startTime, setStartTime] = useState<string>('');
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [isPaused, setIsPaused] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const [workoutCompleted, setWorkoutCompleted] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  
+  // Reset state when routine changes
+  useEffect(() => {
+    setIsActive(false);
+    setCurrentExerciseIndex(0);
+    setCompletedExercises([]);
+    setStartTime('');
+    setElapsedTime(0);
+    setIsPaused(false);
+    setWorkoutCompleted(false);
+    setError(null);
+  }, [routine?._id]);
   
   // Timer for workout duration
   useEffect(() => {
@@ -128,23 +157,26 @@ export function useWorkoutSession(routine: Routine | null) {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isActive, isPaused]);
-
-  const startWorkout = useCallback(() => {
+  }, [isActive, isPaused]);  const startWorkout = useCallback(() => {
+    if (!routine) return;
     setIsActive(true);
     setStartTime(new Date().toISOString());
     setCurrentExerciseIndex(0);
     setCompletedExercises([]);
     setElapsedTime(0);
+    // Start paused so user can prepare and explicitly start when ready
     setIsPaused(true);
-  }, []);
+    setWorkoutCompleted(false);
+    setError(null);
+  }, [routine]);
 
   const togglePause = useCallback(() => {
+    if (workoutCompleted) return;
     setIsPaused(prev => !prev);
-  }, []);
+  }, [workoutCompleted]);
 
   const skipExercise = useCallback(() => {
-    if (!routine || currentExerciseIndex >= routine.exercises.length - 1) return;
+    if (!routine || currentExerciseIndex >= routine.exercises.length - 1 || workoutCompleted) return;
     
     // Mark current exercise as skipped
     const currentExercise = routine.exercises[currentExerciseIndex];
@@ -153,60 +185,177 @@ export function useWorkoutSession(routine: Routine | null) {
       completed: false,
       actualSets: 0,
       actualReps: 0,
+      actualWeight: 0,
       notes: "Skipped"
     }]);
     
     setCurrentExerciseIndex(prev => prev + 1);
-  }, [currentExerciseIndex, routine]);
+    setIsPaused(true);
+  }, [currentExerciseIndex, routine, workoutCompleted]);
 
   const completeExercise = useCallback((exercise: CompletedExercise) => {
-    setCompletedExercises(prev => [...prev, exercise]);
+    if (workoutCompleted) return;
+    
+    setCompletedExercises(prev => [...prev, {
+      ...exercise,
+      completed: true,
+      actualSets: Math.max(1, exercise.actualSets),
+      actualReps: Math.max(1, exercise.actualReps),
+      actualWeight: exercise.actualWeight ? Math.max(0, exercise.actualWeight) : exercise.weight
+    }]);
     
     if (routine && currentExerciseIndex < routine.exercises.length - 1) {
       setCurrentExerciseIndex(prev => prev + 1);
       setIsPaused(true);
     }
-  }, [currentExerciseIndex, routine]);
-
+  }, [currentExerciseIndex, routine, workoutCompleted]);
   const finishWorkout = useCallback(async () => {
-    if (!routine) return null;
+    if (!routine || !isActive) return null;
     
     try {
       const endTime = new Date().toISOString();
+      const remainingExercises = routine.exercises.slice(currentExerciseIndex);
+      
+      // Make sure we have valid completed exercises
+      const validCompletedExercises = completedExercises.map(ex => ({
+        name: ex.name,
+        description: ex.description || "",
+        sets: ex.sets,
+        reps: ex.reps,
+        duration: ex.duration || 0,
+        restTime: ex.restTime || 60,
+        weight: ex.weight || 0,
+        completed: Boolean(ex.completed),
+        actualSets: Math.max(0, ex.actualSets || 0),
+        actualReps: Math.max(0, ex.actualReps || 0),
+        actualWeight: ex.actualWeight || 0,
+        notes: ex.notes || ""
+      }));
+      
+      // Add remaining exercises as skipped
+      const allExercises = [
+        ...validCompletedExercises,
+        ...remainingExercises.map(ex => ({
+          name: ex.name,
+          description: ex.description || "",
+          sets: ex.sets,
+          reps: ex.reps,
+          duration: ex.duration || 0,
+          restTime: ex.restTime || 60,
+          weight: ex.weight || 0,
+          completed: false,
+          actualSets: 0,
+          actualReps: 0,
+          actualWeight: 0,
+          notes: "Skipped"
+        }))
+      ];
+
       const workoutLog = {
         routine: routine._id,
         startTime,
         endTime,
         duration: elapsedTime,
-        exercises: completedExercises,
+        exercises: allExercises,
+        notes: `Completed ${validCompletedExercises.filter(e => e.completed).length} of ${routine.exercises.length} exercises`,
+        rating: 5  // Can be updated with user rating later
       };
 
+      console.log('Saving workout log:', workoutLog);
       const result = await workoutLogService.createWorkoutLog(workoutLog);
+      console.log('Workout log saved successfully:', result);
       
       setIsActive(false);
       setCurrentExerciseIndex(0);
       setCompletedExercises([]);
       setElapsedTime(0);
-      setIsPaused(true);
+      setIsPaused(false);
+      setWorkoutCompleted(true);
+      setError(null);
 
       return result;
     } catch (err) {
       console.error("Error saving workout log:", err);
+      setError(err instanceof Error ? err : new Error('Failed to save workout'));
       throw err;
     }
-  }, [routine, startTime, elapsedTime, completedExercises]);
+  }, [routine, isActive, currentExerciseIndex, startTime, elapsedTime, completedExercises]);
 
   return {
     isActive,
     isPaused,
+    workoutCompleted,
     currentExerciseIndex,
     completedExercises,
     elapsedTime,
+    error,
     startWorkout,
     togglePause,
     skipExercise,
     completeExercise,
     finishWorkout
+  };
+}
+
+/**
+ * Hook for syncing workout data
+ */
+export function useSyncWorkoutData() {
+  // Local state for tracking sync status
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    // Load last sync time from local storage
+    const storedSyncTime = localStorage.getItem('lastWorkoutSync');
+    if (storedSyncTime) {
+      setLastSyncTime(storedSyncTime);
+    }
+  }, []);
+
+  // Function to sync workout data with server
+  const syncWorkouts = useCallback(async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    setError(null);
+
+    try {
+      // Get all routines to ensure we have latest data
+      const routinesData = await routineService.getAllRoutines();
+      const routines = routinesData.data;
+
+      // Get all workout logs
+      const logsData = await workoutLogService.getAllWorkoutLogs();
+      let logs = logsData.data;
+
+      // Sort logs by date
+      logs = logs.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+      // Store sync time
+      const syncTime = new Date().toISOString();
+      localStorage.setItem('lastWorkoutSync', syncTime);
+      setLastSyncTime(syncTime);
+
+      return {
+        routines,
+        logs,
+        syncTime
+      };
+    } catch (err) {
+      console.error('Error syncing workout data:', err);
+      setError(err instanceof Error ? err : new Error('Sync failed'));
+      throw err;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isSyncing]);
+
+  return {
+    isSyncing,
+    lastSyncTime,
+    error,
+    syncWorkouts
   };
 }
 

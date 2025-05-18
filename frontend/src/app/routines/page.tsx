@@ -76,6 +76,7 @@ export default function RoutinesPage() {
     notes: "",
   });
   const [editingExerciseIndex, setEditingExerciseIndex] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const handleCreateRoutine = async () => {
     try {
       setIsSubmitting(true);
@@ -85,7 +86,7 @@ export default function RoutinesPage() {
         toast({
           title: "Error",
           description: "Please fill in all required fields",
-          variant: "destructive"
+          
         });
         return;
       }
@@ -94,7 +95,7 @@ export default function RoutinesPage() {
         toast({
           title: "Error",
           description: "Please add at least one exercise",
-          variant: "destructive"
+          
         });
         return;
       }
@@ -128,7 +129,7 @@ export default function RoutinesPage() {
       toast({
         title: "Error",
         description: err instanceof Error ? err.message : "Failed to create routine",
-        variant: "destructive"
+        
       });
     } finally {
       setIsSubmitting(false);
@@ -140,7 +141,7 @@ export default function RoutinesPage() {
       toast({
         title: "Error",
         description: "Exercise name is required",
-        variant: "destructive"
+        
       });
       return;
     }
@@ -200,7 +201,6 @@ export default function RoutinesPage() {
 
   const handleDeleteRoutine = async () => {
     if (!deleteId) return;
-
     try {
       setIsSubmitting(true);
       await routineService.deleteRoutine(deleteId);
@@ -209,12 +209,12 @@ export default function RoutinesPage() {
         description: "Routine deleted successfully",
       });
       setShowDeleteDialog(false);
+      setDeleteId(null);
       mutate();
     } catch (err) {
       toast({
         title: "Error",
         description: err instanceof Error ? err.message : "Failed to delete routine",
-        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
@@ -260,7 +260,7 @@ export default function RoutinesPage() {
                   <label htmlFor="title" className="text-sm font-medium">Title</label>
                   <Input
                     id="title"
-                    placeholder="Routine title"
+                    placeholder="e.g. Push Pull Legs Split"
                     value={newRoutine.title}
                     onChange={e => setNewRoutine(prev => ({ ...prev, title: e.target.value }))}
                   />
@@ -295,7 +295,7 @@ export default function RoutinesPage() {
                 <label htmlFor="description" className="text-sm font-medium">Description</label>
                 <Textarea
                   id="description"
-                  placeholder="Describe your routine..."
+                  placeholder="e.g. A 3-day split focusing on compound lifts and muscle balance."
                   value={newRoutine.description}
                   onChange={e => setNewRoutine(prev => ({ ...prev, description: e.target.value }))}
                 />
@@ -358,7 +358,7 @@ export default function RoutinesPage() {
                           <label htmlFor="exerciseName" className="text-sm font-medium">Name</label>
                           <Input
                             id="exerciseName"
-                            placeholder="Exercise name"
+                            placeholder="e.g. Barbell Bench Press"
                             value={exerciseForm.name}
                             onChange={e => setExerciseForm(prev => ({ ...prev, name: e.target.value }))}
                           />
@@ -370,6 +370,7 @@ export default function RoutinesPage() {
                               id="sets"
                               type="number"
                               min="1"
+                              placeholder="e.g. 4"
                               value={exerciseForm.sets}
                               onChange={e => setExerciseForm(prev => ({ ...prev, sets: parseInt(e.target.value) || 1 }))}
                             />
@@ -380,6 +381,7 @@ export default function RoutinesPage() {
                               id="reps"
                               type="number"
                               min="1"
+                              placeholder="e.g. 8"
                               value={exerciseForm.reps}
                               onChange={e => setExerciseForm(prev => ({ ...prev, reps: parseInt(e.target.value) || 1 }))}
                             />
@@ -392,6 +394,7 @@ export default function RoutinesPage() {
                               id="duration"
                               type="number"
                               min="0"
+                              placeholder="e.g. 60"
                               value={exerciseForm.duration}
                               onChange={e => setExerciseForm(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
                             />
@@ -402,6 +405,7 @@ export default function RoutinesPage() {
                               id="restTime"
                               type="number"
                               min="0"
+                              placeholder="e.g. 90"
                               value={exerciseForm.restTime}
                               onChange={e => setExerciseForm(prev => ({ ...prev, restTime: parseInt(e.target.value) || 0 }))}
                             />
@@ -414,6 +418,7 @@ export default function RoutinesPage() {
                             type="number"
                             min="0"
                             step="0.5"
+                            placeholder="e.g. 60 (kg)"
                             value={exerciseForm.weight}
                             onChange={e => setExerciseForm(prev => ({ ...prev, weight: parseFloat(e.target.value) || 0 }))}
                           />
@@ -422,7 +427,7 @@ export default function RoutinesPage() {
                           <label htmlFor="notes" className="text-sm font-medium">Notes (optional)</label>
                           <Textarea
                             id="notes"
-                            placeholder="Any additional notes..."
+                            placeholder="e.g. Focus on form, keep elbows tucked."
                             value={exerciseForm.notes}
                             onChange={e => setExerciseForm(prev => ({ ...prev, notes: e.target.value }))}
                           />
@@ -470,12 +475,13 @@ export default function RoutinesPage() {
 
       <div className="space-y-6">
         <div className="flex items-center space-x-4">
-          <div className="flex-1">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search routines..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              prefix={<Search className="h-4 w-4" />}
+              className="pl-10"
             />
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -490,7 +496,7 @@ export default function RoutinesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRoutines.map((routine) => (
             <Link key={routine._id} href={`/routines/${routine._id}`}>
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow" onContextMenu={e => { e.preventDefault(); setDeleteId(routine._id); setShowDeleteDialog(true); }}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
@@ -529,7 +535,7 @@ export default function RoutinesPage() {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <Dialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteId(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Routine</DialogTitle>

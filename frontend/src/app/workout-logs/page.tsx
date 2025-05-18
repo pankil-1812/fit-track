@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, BarChart2, Award } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,67 +21,40 @@ import {
 import { format, addDays, subDays } from "date-fns"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-
-// Mock data for workout logs
-const workoutLogs = [
-  {
-    id: 1,
-    date: new Date(2025, 4, 15), // May 15, 2025
-    routineName: "Full Body Strength",
-    duration: "48 minutes",
-    caloriesBurned: 320,
-    exercises: [
-      { name: "Squats", sets: 4, reps: [10, 10, 8, 8], weight: "135 lbs", notes: "Increased weight from last session" },
-      { name: "Bench Press", sets: 4, reps: [10, 8, 8, 6], weight: "155 lbs", notes: "" },
-      { name: "Deadlifts", sets: 3, reps: [8, 8, 6], weight: "185 lbs", notes: "Focused on form" },
-      { name: "Shoulder Press", sets: 3, reps: [12, 10, 10], weight: "65 lbs", notes: "" },
-    ],
-    mood: "Energetic",
-    notes: "Great session overall. Could push harder on bench press next time."
-  },
-  {
-    id: 2,
-    date: new Date(2025, 4, 13), // May 13, 2025
-    routineName: "HIIT Cardio Blast",
-    duration: "32 minutes",
-    caloriesBurned: 380,
-    exercises: [
-      { name: "Jumping Jacks", sets: 3, reps: ["30 sec", "30 sec", "30 sec"], weight: "bodyweight", notes: "" },
-      { name: "Burpees", sets: 3, reps: ["30 sec", "30 sec", "25 sec"], weight: "bodyweight", notes: "Struggling with the last set" },
-      { name: "Mountain Climbers", sets: 3, reps: ["30 sec", "30 sec", "30 sec"], weight: "bodyweight", notes: "" },
-      { name: "Plank Jacks", sets: 3, reps: ["30 sec", "25 sec", "20 sec"], weight: "bodyweight", notes: "Need to improve endurance" },
-    ],
-    mood: "Tired",
-    notes: "Pushed through despite feeling low energy. Need more rest next time."
-  },
-  {
-    id: 3,
-    date: new Date(2025, 4, 10), // May 10, 2025
-    routineName: "Upper Body Focus",
-    duration: "42 minutes",
-    caloriesBurned: 290,
-    exercises: [
-      { name: "Push-ups", sets: 3, reps: [12, 12, 10], weight: "bodyweight", notes: "" },
-      { name: "Dumbbell Rows", sets: 3, reps: [12, 12, 12], weight: "45 lbs", notes: "Good form throughout" },
-      { name: "Lateral Raises", sets: 3, reps: [15, 12, 12], weight: "15 lbs", notes: "" },
-      { name: "Bicep Curls", sets: 3, reps: [15, 12, 12], weight: "25 lbs", notes: "Increased weight" },
-      { name: "Tricep Dips", sets: 3, reps: [15, 12, 10], weight: "bodyweight", notes: "Need to work on tricep strength" },
-    ],
-    mood: "Focused",
-    notes: "Great pump today. Arms feel stronger than last session."
-  },
-]
+import { workoutLogService, routineService } from "@/lib/api"
+import { WorkoutLog, Routine } from "@/lib/types"
 
 export default function WorkoutLogsPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  
+  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([])
+  const [routines, setRoutines] = useState<Routine[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true)
+      try {
+        const logsRes = await workoutLogService.getAllWorkoutLogs()
+        setWorkoutLogs(logsRes.data)
+        const routinesRes = await routineService.getAllRoutines()
+        setRoutines(routinesRes.data)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
   // Function to get logs for the selected date
   const getLogsForSelectedDate = () => {
-    return workoutLogs.filter(log => 
-      log.date.getDate() === selectedDate.getDate() && 
-      log.date.getMonth() === selectedDate.getMonth() && 
-      log.date.getFullYear() === selectedDate.getFullYear()
-    )
+    return workoutLogs.filter(log => {
+      const logDate = new Date(log.startTime)
+      return (
+        logDate.getDate() === selectedDate.getDate() &&
+        logDate.getMonth() === selectedDate.getMonth() &&
+        logDate.getFullYear() === selectedDate.getFullYear()
+      )
+    })
   }
   
   // Function to navigate between dates
@@ -258,7 +231,7 @@ export default function WorkoutLogsPage() {
                         </div>
                         {log.notes && (
                           <div className="mt-4 pt-3 border-t">
-                            <p className="text-sm italic">"{log.notes}"</p>
+                            <p className="text-sm italic">&quot;{log.notes}&quot;</p>
                           </div>
                         )}
                       </CardContent>
@@ -277,7 +250,7 @@ export default function WorkoutLogsPage() {
                   </div>
                   <h3 className="text-lg font-medium">No workouts logged</h3>
                   <p className="text-muted-foreground mt-1 mb-4">
-                    You haven't logged any workouts for this day yet.
+                    You haven&apos;t logged any workouts for this day yet.
                   </p>
                   <Dialog>
                     <DialogTrigger asChild>
