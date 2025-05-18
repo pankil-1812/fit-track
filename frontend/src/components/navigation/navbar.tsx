@@ -172,7 +172,7 @@ export function Navbar() {
                                             transition={{ duration: 0.2 }}
                                             className="rounded-xl bg-background/80 backdrop-blur-xl shadow-lg border border-primary/10 p-2 overflow-hidden"
                                         >
-                                            {item.submenu.map((subItem) => (
+                                            {item.submenu?.map((subItem) => (
                                                 <Link
                                                     key={subItem.href}
                                                     href={subItem.href}

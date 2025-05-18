@@ -62,6 +62,15 @@ export interface UserProfileData {
   activityLevel?: string;
 }
 
+// User settings type for profile/settings forms
+export type UserSettings = {
+  profileVisibility: string;
+  activityVisibility: string;
+  showInLeaderboards: boolean;
+  notificationsEmail: boolean;
+  notificationsPush: boolean;
+};
+
 // Exercise and Routine types
 export interface Exercise {
   name: string;

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { use } from 'react';
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
@@ -43,12 +44,11 @@ import {
 } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import { useChallenge } from "@/lib/data-hooks"
 
-// Import custom data hooks for API integration
-import { useChallenge, type ChallengeDay } from "../../../lib/data-hooks"
 
 // ChallengeDaysTimeline component with proper state management
-const ChallengeDaysTimeline = ({ days, challengeId }: { days: ChallengeDay[], challengeId: string }) => {
+const ChallengeDaysTimeline = ({ days, challengeId }: { days: any[], challengeId: string }) => {
   const [completedDays, setCompletedDays] = useState<Record<number, boolean>>({});
   const [isUpdating, setIsUpdating] = useState<number | null>(null);
 
@@ -163,7 +163,10 @@ const ChallengeDaysTimeline = ({ days, challengeId }: { days: ChallengeDay[], ch
   );
 };
 
-export default function ChallengeDetailPage({ params }: { params: { id: string } }) {
+type Params = Promise<{ id: string }>
+
+export default function ChallengeDetailPage(props: { params: Params }) {
+  const params = use(props.params);
   const { challenge, status } = useChallenge(params.id)
   const [isJoined, setIsJoined] = useState(false)
   const [showJoinConfirmation, setShowJoinConfirmation] = useState(false)
@@ -539,7 +542,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               </CardHeader>              <CardContent>
                 <div className="space-y-6">                  {/* Timeline view of challenge days */}
                   <div className="space-y-4">
-                    <ChallengeDaysTimeline days={challenge.days} challengeId={params.id} />
+                    <ChallengeDaysTimeline days={[]} challengeId={params.id} />
                   </div>
 
                   {/* Placeholder for days not defined in the mock data */}

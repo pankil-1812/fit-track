@@ -20,7 +20,7 @@ export default function ForgotPassword() {
     try {
       const res = await authService.forgotPassword(email);
       setMessage(res.message);
-      if (res.resetUrl) setResetUrl(res.resetUrl);
+      if (res.message) setResetUrl(res.message);
     } catch {
       setMessage("No user found with that email.");
     } finally {

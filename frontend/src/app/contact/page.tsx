@@ -15,47 +15,59 @@ export default function ContactPage() {
     message: ""
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitMessage, setSubmitMessage] = useState(null)
+  const [submitMessage, setSubmitMessage] = useState({} as SubmitMessage | null)
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value
-    })
+    });
+  };
+
+  interface FormData {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    
+  interface SubmitMessage {
+    type: 'success' | 'error';
+    text: string;
+  }
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
     // Simulate form submission
     setTimeout(() => {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
       setSubmitMessage({
-        type: "success",
-        text: "Thank you for your message! We'll get back to you soon."
-      })
-      
+        text: "Thank you for your message! We'll get back to you soon.",
+        type: "success"
+      });
+
       // Reset form
       setFormData({
         name: "",
         email: "",
         subject: "",
         message: ""
-      })
-      
+      });
+
       // Clear success message after 5 seconds
       setTimeout(() => {
-        setSubmitMessage(null)
-      }, 5000)
-    }, 1500)
-  }
+        setSubmitMessage(null);
+      }, 5000);
+    }, 1500);
+  };
 
   return (
     <div className="container px-4 py-16 md:py-24 mx-auto">
       {/* Header with animation */}
-      <motion.div 
+      <motion.div
         className="text-center mb-12"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -89,10 +101,10 @@ export default function ContactPage() {
           <div className="md:col-span-2">
             <h2 className="text-2xl font-bold mb-6">Get In Touch</h2>
             <p className="text-muted-foreground mb-8">
-              Have questions, feedback, or need assistance? We're here to help! 
+              Have questions, feedback, or need assistance? We're here to help!
               Reach out to our team using the contact form or through any of the methods below.
             </p>
-            
+
             <div className="space-y-6">
               <div className="flex items-start gap-4">
                 <div className="bg-primary/10 p-3 rounded-full">
@@ -103,7 +115,7 @@ export default function ContactPage() {
                   <p className="text-muted-foreground">123 Fitness Street, Health District<br />San Francisco, CA 94103</p>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-4">
                 <div className="bg-primary/10 p-3 rounded-full">
                   <Mail className="h-5 w-5 text-primary" />
@@ -118,7 +130,7 @@ export default function ContactPage() {
                   </a>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-4">
                 <div className="bg-primary/10 p-3 rounded-full">
                   <Phone className="h-5 w-5 text-primary" />
@@ -134,7 +146,7 @@ export default function ContactPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="mt-8 p-6 bg-muted/30 rounded-xl border border-primary/10">
               <h3 className="font-semibold mb-2">Business Hours</h3>
               <p className="text-muted-foreground">
@@ -144,18 +156,18 @@ export default function ContactPage() {
               </p>
             </div>
           </div>
-          
+
           {/* Contact Form */}
           <div className="md:col-span-3">
             <div className="bg-muted/30 p-8 rounded-xl border border-primary/10">
               <h2 className="text-2xl font-bold mb-6">Send Us a Message</h2>
-              
+
               {submitMessage ? (
                 <div className={`p-4 mb-6 rounded-lg ${submitMessage.type === "success" ? "bg-green-500/10 text-green-500 border border-green-500/20" : "bg-red-500/10 text-red-500 border border-red-500/20"}`}>
                   {submitMessage.text}
                 </div>
               ) : null}
-              
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -171,7 +183,7 @@ export default function ContactPage() {
                       required
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <label htmlFor="email" className="text-sm font-medium">
                       Email Address
@@ -187,7 +199,7 @@ export default function ContactPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label htmlFor="subject" className="text-sm font-medium">
                     Subject
@@ -201,7 +213,7 @@ export default function ContactPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <label htmlFor="message" className="text-sm font-medium">
                     Your Message
@@ -217,9 +229,9 @@ export default function ContactPage() {
                     required
                   ></textarea>
                 </div>
-                
-                <Button 
-                  type="submit" 
+
+                <Button
+                  type="submit"
                   className="rounded-full w-full sm:w-auto px-8 py-6 bg-gradient-to-r from-primary to-blue-600"
                   disabled={isSubmitting}
                 >
@@ -239,7 +251,7 @@ export default function ContactPage() {
             </div>
           </div>
         </motion.div>
-        
+
         {/* Map */}
         <motion.div
           className="mt-16"

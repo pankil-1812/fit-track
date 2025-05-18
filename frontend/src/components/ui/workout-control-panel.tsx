@@ -70,9 +70,9 @@ export function WorkoutControlPanel({
         key={currentExerciseIndex}
         exercise={currentExercise}
         onComplete={handleComplete}
-        onSkip={onSkip}
+        onSkipSet={onSkip}
         showControls={!isPaused}
-        isActive={!isPaused}
+        // isActive={!isPaused}
       />
 
       {/* Control Buttons */}

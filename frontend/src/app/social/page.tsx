@@ -82,7 +82,7 @@ export default function SocialPage() {
           avatar: "/images/avatars/user.jpg"
         },
         content: newPostContent,
-        image: selectedImage,
+        image: selectedImage || undefined,
         likes: 0,
         comments: [],
         timestamp: new Date().toISOString()

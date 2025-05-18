@@ -59,11 +59,7 @@ export default function WorkoutLogsPage() {
   
   // Function to navigate between dates
   const navigateDate = (direction: 'prev' | 'next') => {
-    if (direction === 'prev') {
-      setSelectedDate(subDays(selectedDate, 1))
-    } else {
-      setSelectedDate(addDays(selectedDate, 1))
-    }
+    setSelectedDate(prev => direction === 'prev' ? subDays(prev, 1) : addDays(prev, 1))
   }
 
   const selectedLogs = getLogsForSelectedDate()
@@ -178,7 +174,7 @@ export default function WorkoutLogsPage() {
               {selectedLogs.length > 0 ? (
                 selectedLogs.map((log) => (
                   <motion.div 
-                    key={log.id}
+                    key={log._id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
@@ -187,9 +183,11 @@ export default function WorkoutLogsPage() {
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle className="text-lg">{log.routineName}</CardTitle>
+                            <CardTitle className="text-lg">
+                              {typeof log.routine === 'string' ? log.routine : log.routine.title}
+                            </CardTitle>
                             <CardDescription className="text-xs">
-                              {format(log.date, 'h:mm a')} • {log.duration} • {log.caloriesBurned} calories
+                              {format(new Date(log.createdAt), 'h:mm a')} • {Math.round(log.duration / 60)} mins
                             </CardDescription>
                           </div>
                           <div className="flex flex-col items-end">
@@ -201,7 +199,7 @@ export default function WorkoutLogsPage() {
                                 <Award className="h-4 w-4" />
                               </Button>
                             </div>
-                            <span className="text-xs text-muted-foreground mt-1">Mood: {log.mood}</span>
+                            <span className="text-xs text-muted-foreground mt-1">Rating: {log.rating || 'Not rated'}</span>
                           </div>
                         </div>
                       </CardHeader>
@@ -211,14 +209,15 @@ export default function WorkoutLogsPage() {
                             <div key={i} className="text-sm">
                               <div className="flex justify-between">
                                 <span className="font-medium">{exercise.name}</span>
-                                <span className="text-muted-foreground">{exercise.weight}</span>
+                                <span className="text-muted-foreground">{exercise.weight}kg</span>
                               </div>
                               <div className="flex gap-2 mt-1">
-                                {exercise.reps.map((rep, j) => (
-                                  <div key={j} className="px-2 py-1 bg-muted rounded-md text-xs">
-                                    {rep} {typeof rep === 'number' ? 'reps' : ''}
-                                  </div>
-                                ))}
+                                <div className="px-2 py-1 bg-muted rounded-md text-xs">
+                                  {exercise.actualSets}/{exercise.sets} sets
+                                </div>
+                                <div className="px-2 py-1 bg-muted rounded-md text-xs">
+                                  {exercise.actualReps}/{exercise.reps} reps
+                                </div>
                               </div>
                               {exercise.notes && (
                                 <p className="text-xs text-muted-foreground mt-1">

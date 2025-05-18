@@ -72,9 +72,11 @@ import {
 } from "@/components/ui/tabs"
 import { WorkoutExercise } from "@/components/ui/workout-exercise"
 
-export default function RoutineDetailPage({ params }: { params: { id: string } }) {
-  const unwrappedParams = React.use(params)
-  const routineId = unwrappedParams.id
+type Params = Promise<{ id: string }>
+
+export default function RoutineDetailPage(props: { params: Params }) {
+  const params = React.use(props.params);
+  const routineId = params.id;
   const { routine, status } = useRoutine(routineId)
   const { workoutLogs } = useRoutineWorkoutHistory(routineId)
   const {
@@ -139,7 +141,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
       toast({
         title: "Error",
         description: "Routine not found",
-        
+
       });
       return;
     }
@@ -149,7 +151,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
       toast({
         title: "Error",
         description: "Exercise name is required",
-        
+
       });
       return;
     }
@@ -202,7 +204,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
         toast({
           title: "Error",
           description: "Failed to save exercise",
-          
+
         });
       });
   };
@@ -252,7 +254,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
         toast({
           title: "Error",
           description: "Failed to save workout progress. Please try again.",
-          
+
         });
       });
   };
@@ -279,7 +281,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
         toast({
           title: "Error",
           description: "Failed to delete exercise",
-          
+
         });
       });
   };
@@ -307,7 +309,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
         toast({
           title: "Error",
           description: "Failed to update routine",
-          
+
         });
       });
   };
@@ -324,7 +326,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
         toast({
           title: "Error",
           description: "Failed to delete routine",
-          
+
         });
       })
       .finally(() => {

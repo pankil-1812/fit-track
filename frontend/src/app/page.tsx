@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, Suspense } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import {
   OrbitControls,
   Environment,
@@ -17,8 +18,8 @@ import Link from 'next/link'
 import { Dumbbell, ChevronDown, ArrowUpRight, Activity, Trophy, Users, LineChart } from 'lucide-react'
 
 // Dynamic 3D model loader with fallback to simple shapes
-function FitnessModel({ scroll }) {
-  const group = useRef()
+function FitnessModel({ scroll }: { scroll: any }) {
+  const group = useRef<THREE.Group>(null);
 
   // Create a more interactive fitness dashboard/tracker visualization
   const createFitnessTracker = () => {
@@ -179,7 +180,12 @@ function FitnessModel({ scroll }) {
 }
 
 // Animated stats counter
-function AnimatedCounter({ value, label, icon, delay = 0 }) {
+function AnimatedCounter({ value, label, icon, delay = 0 }: {
+  value: number
+  label: string
+  icon: React.ReactNode
+  delay?: number
+}) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -225,7 +231,7 @@ function AnimatedCounter({ value, label, icon, delay = 0 }) {
 }
 
 // 3D Scene
-function FitnessDashboard3D({ scrollRef }) {
+function FitnessDashboard3D() {
   const data = useScroll()
 
   return (
@@ -273,7 +279,12 @@ function FitnessDashboard3D({ scrollRef }) {
 }
 
 // Feature card with hover effects
-function FeatureCard({ title, description, icon, index }) {
+function FeatureCard({ title, description, icon, index }: {
+  title: string
+  description: string
+  icon: React.ReactNode
+  index: number
+}) {
   return (
     <motion.div
       className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-background to-background/80 p-8 border border-primary/10 shadow-lg hover:shadow-xl transition-all duration-300"
@@ -303,7 +314,13 @@ function FeatureCard({ title, description, icon, index }) {
 }
 
 // Testimonial card with premium design
-function TestimonialCard({ quote, name, title, avatar, index }) {
+function TestimonialCard({ quote, name, title, avatar, index }: {
+  quote: string
+  name: string
+  title: string
+  avatar?: string
+  index: number
+}) {
   return (
     <motion.div
       className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-background to-background/80 p-8 border border-primary/10 shadow-lg"
@@ -472,7 +489,7 @@ export default function Home() {
 
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-500/20 rounded-3xl blur-3xl opacity-30"></div>
-              <FitnessDashboard3D scrollRef={scrollRef} />
+              <FitnessDashboard3D />
             </div>
           </div>
         </div>

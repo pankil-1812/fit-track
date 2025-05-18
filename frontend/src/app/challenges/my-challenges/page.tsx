@@ -4,25 +4,25 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
-import { 
-  ArrowLeft, 
-  Search, 
-  Calendar, 
-  Trophy, 
-  Clock, 
+import {
+  ArrowLeft,
+  Search,
+  Calendar,
+  Trophy,
+  Clock,
   CheckCircle,
   ClockIcon,
   HistoryIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card"
 import {
   Tabs,
@@ -49,12 +49,28 @@ interface ChallengeCardType {
 export default function MyChallengesPage() {
   const { userChallenges } = useUserChallenges()
   const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState("active")
   // Remove unused activeTab if not used elsewhere
-  const { active: activeChallenges, completed: completedChallenges, past: pastChallenges } = userChallenges
-  
+
+  // Convert Challenge[] to ChallengeCardType[] to fix type mismatch
+  const activeChallenges: ChallengeCardType[] = userChallenges.active.map(c => ({
+    ...c,
+    id: String(c.id) // Convert number id to string
+  })) as ChallengeCardType[];
+
+  const completedChallenges: ChallengeCardType[] = userChallenges.completed.map(c => ({
+    ...c,
+    id: String(c.id) // Convert number id to string
+  })) as ChallengeCardType[];
+
+  const pastChallenges: ChallengeCardType[] = userChallenges.past.map(c => ({
+    ...c,
+    id: String(c.id) // Convert number id to string
+  })) as ChallengeCardType[];
+
   // Filter challenges based on search and active tab
   const getFilteredChallenges = (challengeList: ChallengeCardType[]) => {
-    return challengeList.filter(challenge => 
+    return challengeList.filter(challenge =>
       challenge.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       challenge.description.toLowerCase().includes(searchQuery.toLowerCase())
     )
@@ -72,14 +88,14 @@ export default function MyChallengesPage() {
             </Link>
           </Button>
         </div>
-        
+
         <div className="flex flex-col space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">My Challenges</h1>
           <p className="text-muted-foreground">
             Track and manage your active and completed fitness challenges
           </p>
         </div>
-        
+
         {/* Search section */}
         <div className="relative w-full md:w-96">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -91,7 +107,7 @@ export default function MyChallengesPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        
+
         {/* Challenge Status Tabs */}
         <Tabs defaultValue="active" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="mb-6">
@@ -99,7 +115,7 @@ export default function MyChallengesPage() {
             <TabsTrigger value="completed">Completed</TabsTrigger>
             <TabsTrigger value="past">Past</TabsTrigger>
           </TabsList>
-          
+
           {/* Active Challenges Tab */}
           <TabsContent value="active" className="mt-0">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -114,8 +130,8 @@ export default function MyChallengesPage() {
                   </div>
                   <h3 className="text-lg font-medium">No active challenges</h3>
                   <p className="text-muted-foreground mt-1 mb-4">
-                    {searchQuery ? 
-                      "We couldn't find any active challenges matching your search." : 
+                    {searchQuery ?
+                      "We couldn't find any active challenges matching your search." :
                       "You don't have any active challenges. Join a challenge to get started!"}
                   </p>
                   <Button asChild>
@@ -125,7 +141,7 @@ export default function MyChallengesPage() {
               )}
             </div>
           </TabsContent>
-          
+
           {/* Completed Challenges Tab */}
           <TabsContent value="completed" className="mt-0">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -149,7 +165,7 @@ export default function MyChallengesPage() {
               )}
             </div>
           </TabsContent>
-          
+
           {/* Past Challenges Tab */}
           <TabsContent value="past" className="mt-0">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -171,7 +187,7 @@ export default function MyChallengesPage() {
             </div>
           </TabsContent>
         </Tabs>
-        
+
         {/* Challenge Stats Section */}
         <div className="mt-8">
           <h2 className="text-2xl font-bold mb-6">My Challenge Stats</h2>
@@ -184,7 +200,7 @@ export default function MyChallengesPage() {
                 <p className="text-3xl font-bold">{activeChallenges.length + completedChallenges.length + pastChallenges.length}</p>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Challenges Completed</CardTitle>
@@ -193,20 +209,20 @@ export default function MyChallengesPage() {
                 <p className="text-3xl font-bold">{completedChallenges.length}</p>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">
-                  {completedChallenges.length > 0 ? 
-                    `${Math.round((completedChallenges.length / (completedChallenges.length + pastChallenges.length)) * 100)}%` : 
+                  {completedChallenges.length > 0 ?
+                    `${Math.round((completedChallenges.length / (completedChallenges.length + pastChallenges.length)) * 100)}%` :
                     '0%'}
                 </p>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Points Earned</CardTitle>
@@ -232,7 +248,7 @@ function ActiveChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
       <Card className="h-full flex flex-col overflow-hidden">
         <div className="relative h-40">
           {challenge.image ? (
-            <Image 
+            <Image
               src={challenge.image}
               fill
               alt={challenge.name}
@@ -258,8 +274,8 @@ function ActiveChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
               <span className="font-medium">{challenge.progress}%</span>
             </div>
             <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary" 
+              <div
+                className="h-full bg-primary"
                 style={{ width: `${challenge.progress}%` }}
               ></div>
             </div>
@@ -289,7 +305,7 @@ function ActiveChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
 function CompletedChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
   // For mockup, we'll pretend this challenge is completed
   const completedDate = "Aug 30, 2023"
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -300,7 +316,7 @@ function CompletedChallengeCard({ challenge }: { challenge: ChallengeCardType })
         <div className="relative h-40">
           {challenge.image ? (
             <>
-              <Image 
+              <Image
                 src={challenge.image}
                 fill
                 alt={challenge.name}
@@ -364,7 +380,7 @@ function CompletedChallengeCard({ challenge }: { challenge: ChallengeCardType })
 function PastChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
   // For mockup, we'll pretend this challenge is expired
   const expiredDate = "Jul 15, 2023"
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -374,7 +390,7 @@ function PastChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
       <Card className="h-full flex flex-col overflow-hidden grayscale">
         <div className="relative h-40">
           {challenge.image ? (
-            <Image 
+            <Image
               src={challenge.image}
               fill
               alt={challenge.name}
@@ -411,8 +427,8 @@ function PastChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
               <span className="font-medium">{challenge.progress}%</span>
             </div>
             <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-muted-foreground" 
+              <div
+                className="h-full bg-muted-foreground"
                 style={{ width: `${challenge.progress}%` }}
               ></div>
             </div>
