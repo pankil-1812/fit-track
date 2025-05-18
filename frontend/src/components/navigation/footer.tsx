@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button"
 export function Footer() {
     const [email, setEmail] = useState("")
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         // Handle newsletter subscription
         alert(`Thank you for subscribing with ${email}! You'll receive our fitness updates soon.`)
@@ -29,7 +29,7 @@ export function Footer() {
     // Current year for copyright
     const currentYear = new Date().getFullYear()
 
-    // Footer links organized by section
+    // Footer links organized by section - only include available pages
     const footerLinks = [
         {
             title: "Features",
@@ -38,37 +38,29 @@ export function Footer() {
                 { name: "Progress Tracking", href: "/workout-logs" },
                 { name: "Performance Analytics", href: "/analytics" },
                 { name: "Fitness Challenges", href: "/challenges" },
-                { name: "Nutrition Planning", href: "/nutrition" },
             ]
         },
         {
             title: "Community",
             links: [
-                { name: "Activity Feed", href: "/social/feed" },
-                { name: "Find Friends", href: "/social/friends" },
-                { name: "Groups & Clubs", href: "/social/groups" },
-                { name: "Live Events", href: "/events" },
-                { name: "Trainer Network", href: "/trainers" },
+                { name: "Activity Feed", href: "/social" },
+                { name: "Find Friends", href: "/social" },
             ]
         },
         {
             title: "Resources",
             links: [
                 { name: "Help Center", href: "/help" },
-                { name: "Video Tutorials", href: "/tutorials" },
-                { name: "API Documentation", href: "/developers" },
-                { name: "Success Stories", href: "/stories" },
-                { name: "Blog & Articles", href: "/blog" },
+                { name: "Privacy Policy", href: "/privacy" },
+                { name: "Terms of Service", href: "/terms" },
+                { name: "Cookies Policy", href: "/cookies" },
             ]
         },
         {
             title: "Company",
             links: [
                 { name: "About Us", href: "/about" },
-                { name: "Careers", href: "/careers" },
-                { name: "Press Kit", href: "/press" },
-                { name: "Contact Us", href: "/contact" },
-                { name: "Partners", href: "/partners" },
+                { name: "Contact Us", href: "/contact" }
             ]
         },
     ]
@@ -79,20 +71,6 @@ export function Footer() {
         { name: "Twitter", href: "https://twitter.com", icon: <Twitter className="h-5 w-5" /> },
         { name: "Facebook", href: "https://facebook.com", icon: <Facebook className="h-5 w-5" /> },
         { name: "YouTube", href: "https://youtube.com", icon: <Youtube className="h-5 w-5" /> },
-    ]
-
-    // App badges
-    const appLinks = [
-        {
-            name: "App Store",
-            href: "https://apps.apple.com",
-            image: "/app-store.svg", // Replace with actual image path
-        },
-        {
-            name: "Google Play",
-            href: "https://play.google.com",
-            image: "/play-store.svg", // Replace with actual image path
-        },
     ]
 
     return (
@@ -202,7 +180,7 @@ export function Footer() {
                         <div className="space-y-3">
                             <h3 className="font-semibold mb-2 text-lg">Get The App</h3>
                             <div className="flex flex-wrap gap-2">
-                                {/* Replace with actual app store badges */}
+                                {/* App Store badge */}
                                 <div className="h-10 px-5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-md flex items-center text-white text-xs cursor-pointer">
                                     <div className="mr-2">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -218,6 +196,7 @@ export function Footer() {
                                     </div>
                                 </div>
 
+                                {/* Google Play badge */}
                                 <div className="h-10 px-5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-md flex items-center text-white text-xs cursor-pointer">
                                     <div className="mr-2">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

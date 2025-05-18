@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -19,16 +19,34 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useTheme } from "next-themes"
 
+// Type definitions
+interface UserData {
+    name?: string;
+    email?: string;
+}
+
+interface NavSubItem {
+    name: string;
+    href: string;
+}
+
+interface NavItem {
+    name: string;
+    href: string;
+    icon: React.ReactNode;
+    submenu?: NavSubItem[];
+}
+
 export function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [isScrolled, setIsScrolled] = useState(false)
-    const [activeDropdown, setActiveDropdown] = useState(null)
+    const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
     const pathname = usePathname()
-    const { setTheme, theme } = useTheme()
+    const { setTheme } = useTheme()
 
     // Authentication state management
     const [isAuthenticated, setIsAuthenticated] = useState(false)
-    const [user, setUser] = useState({ name: "John Doe", email: "john@example.com" })
+    const [user, setUser] = useState<UserData | null>(null)
 
     // Handle scroll event to add background blur on scroll
     useEffect(() => {
@@ -40,66 +58,90 @@ export function Navbar() {
         return () => window.removeEventListener("scroll", handleScroll)
     }, [])
 
-    // Check if user is authenticated on component mount
+    // Check if user is authenticated on component mount and track auth state
     useEffect(() => {
-        // In a real app, this would check localStorage or a token
-        const token = localStorage.getItem("authToken")
-        if (token) {
-            setIsAuthenticated(true)
+        // Function to check auth state
+        const checkAuthState = () => {
+            const token = localStorage.getItem("authToken")
+            const userData = localStorage.getItem("user")
+            
+            if (token && userData) {
+                setIsAuthenticated(true)
+                try {
+                    setUser(JSON.parse(userData))
+                } catch (e) {
+                    console.error("Error parsing user data", e)
+                    // Reset invalid data
+                    localStorage.removeItem("user")
+                }
+            } else {
+                setIsAuthenticated(false)
+                setUser(null)
+            }
+        }
+        
+        // Initial check
+        checkAuthState()
+        
+        // Listen for storage events (login/logout in other tabs)
+        const handleStorageChange = () => {
+            checkAuthState()
+        }
+        
+        window.addEventListener('storage', handleStorageChange)
+        
+        // Clean up
+        return () => {
+            window.removeEventListener('storage', handleStorageChange)
         }
     }, [])
 
-    // Main navigation items
-    const navItems = [
+    // Handle login (redirect to login page)
+    const handleLogin = () => {
+        window.location.href = "/login"
+    }
+
+    // Handle logout
+    const handleLogout = () => {
+        localStorage.removeItem("authToken")
+        localStorage.removeItem("user")
+        setIsAuthenticated(false)
+        setUser(null)
+        // Redirect to home page after logout
+        window.location.href = "/"
+    }
+
+    // Main navigation items - only include pages that exist in the app structure
+    const navItems: NavItem[] = [
         {
             name: "Routines",
             href: "/routines",
             icon: <Dumbbell className="h-5 w-5" />,
-            submenu: [
-                { name: "Discover", href: "/routines/discover" },
-                { name: "My Routines", href: "/routines/my-routines" },
-                { name: "Create New", href: "/routines/create" },
-            ]
+            submenu: [] // Submenu items will be populated if those pages exist
         },
         {
             name: "Workouts",
             href: "/workout-logs",
             icon: <Calendar className="h-5 w-5" />,
-            submenu: [
-                { name: "Start Workout", href: "/workout-logs/start" },
-                { name: "History", href: "/workout-logs/history" },
-                { name: "Templates", href: "/workout-logs/templates" },
-            ]
+            submenu: [] // Submenu items will be populated if those pages exist
         },
         {
             name: "Analytics",
             href: "/analytics",
             icon: <BarChart2 className="h-5 w-5" />,
-            submenu: [
-                { name: "Dashboard", href: "/analytics/dashboard" },
-                { name: "Progress", href: "/analytics/progress" },
-                { name: "Reports", href: "/analytics/reports" },
-            ]
+            submenu: [] // Submenu items will be populated if those pages exist
         },
         {
             name: "Challenges",
             href: "/challenges",
             icon: <Award className="h-5 w-5" />,
-            submenu: [
-                { name: "Active Challenges", href: "/challenges/active" },
-                { name: "Discover", href: "/challenges/discover" },
-                { name: "Create Challenge", href: "/challenges/create" },
-            ]
+            submenu: [] // Submenu items will be populated if those pages exist
         },
         {
             name: "Community",
             href: "/social",
             icon: <Activity className="h-5 w-5" />,
-            submenu: [
-                { name: "Feed", href: "/social/feed" },
-                { name: "Friends", href: "/social/friends" },
-                { name: "Groups", href: "/social/groups" },
-            ]
+            submenu: [] // Submenu items will be populated if those pages exist
         },
     ]
 
@@ -108,7 +150,7 @@ export function Navbar() {
     }
 
     // Handle dropdown show/hide
-    const handleDropdownHover = (item) => {
+    const handleDropdownHover = (item: string) => {
         setActiveDropdown(item)
     }
 
@@ -163,13 +205,13 @@ export function Navbar() {
                                     }`}
                             >
                                 {item.name}
-                                {item.submenu && (
+                                {item.submenu && item.submenu.length > 0 && (
                                     <ChevronDown className="ml-1 h-4 w-4" />
                                 )}
                             </Link>
 
                             {/* Dropdown Menu */}
-                            {item.submenu && activeDropdown === item.name && (
+                            {item.submenu && item.submenu.length > 0 && activeDropdown === item.name && (
                                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 z-50 min-w-[200px]">
                                     <motion.div
                                         initial={{ opacity: 0, y: -5 }}
@@ -195,7 +237,7 @@ export function Navbar() {
                 </nav>
 
                 <div className="flex items-center gap-3">
-                    {/* Notification Button */}
+                    {/* Notification Button - only show when authenticated */}
                     {isAuthenticated && (
                         <div className="relative">
                             <Button variant="ghost" size="icon" className="rounded-full">
@@ -248,7 +290,7 @@ export function Navbar() {
                                             <User className="h-5 w-5 text-primary" />
                                         </div>
                                     </div>
-                                    <span className="font-medium text-sm">John D.</span>
+                                    <span className="font-medium text-sm">{user?.name?.split(' ')[0] || "User"}</span>
                                     <ChevronDown className="h-4 w-4 opacity-50" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -261,12 +303,12 @@ export function Navbar() {
                                         <User className="h-6 w-6 text-primary" />
                                     </div>
                                     <div>
-                                        <div className="font-medium">John Doe</div>
-                                        <div className="text-xs text-muted-foreground">john@example.com</div>
+                                        <div className="font-medium">{user?.name || "User"}</div>
+                                        <div className="text-xs text-muted-foreground">{user?.email || "user@example.com"}</div>
                                     </div>
                                 </div>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="cursor-pointer">
+                                <DropdownMenuItem className="cursor-pointer" onClick={() => window.location.href = "/profile"}>
                                     <User className="h-4 w-4 mr-2" />
                                     Profile
                                 </DropdownMenuItem>
@@ -275,7 +317,7 @@ export function Navbar() {
                                     Settings
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="cursor-pointer text-destructive">
+                                <DropdownMenuItem className="cursor-pointer text-destructive" onClick={handleLogout}>
                                     <LogOut className="h-4 w-4 mr-2" />
                                     Logout
                                 </DropdownMenuItem>
@@ -286,6 +328,7 @@ export function Navbar() {
                             <Button
                                 variant="ghost"
                                 className="rounded-full pl-4 pr-4 transition-all duration-200 hover:bg-primary/10"
+                                onClick={handleLogin}
                                 asChild
                             >
                                 <Link href="/login">
@@ -344,11 +387,11 @@ export function Navbar() {
                                                 </div>
                                                 {item.name}
                                             </div>
-                                            {item.submenu && <ChevronDown className="h-4 w-4 opacity-50" />}
+                                            {item.submenu && item.submenu.length > 0 && <ChevronDown className="h-4 w-4 opacity-50" />}
                                         </Link>
 
                                         {/* Mobile Submenu */}
-                                        {item.submenu && (
+                                        {item.submenu && item.submenu.length > 0 && (
                                             <div className="ml-8 border-l border-primary/10 pl-4 space-y-1">
                                                 {item.submenu.map((subItem) => (
                                                     <Link
