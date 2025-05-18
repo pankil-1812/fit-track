@@ -68,7 +68,7 @@ export default function Register() {
   }
 
   return (
-    <div className="container flex h-screen w-full flex-col items-center justify-center">
+    <div className="container mx-auto flex h-screen w-full flex-col items-center justify-center">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

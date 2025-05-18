@@ -44,9 +44,20 @@ import { routines } from "@/lib/mock-data"
 export default function RoutinesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
+  const [localRoutines, setLocalRoutines] = useState(routines)
+  const [isCreating, setIsCreating] = useState(false)
+  const [newRoutine, setNewRoutine] = useState({
+    name: "",
+    description: "",
+    category: "Strength",
+    level: "Beginner",
+    frequency: "3x per week",
+    duration: "45 minutes",
+    exercises: []
+  })
   
   // Filter routines based on search query and active tab
-  const filteredRoutines = routines.filter(routine => {
+  const filteredRoutines = localRoutines.filter(routine => {
     // Filter by search query
     const matchesSearch = routine.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           routine.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -57,9 +68,92 @@ export default function RoutinesPage() {
     
     return matchesSearch && matchesTab
   })
+    // State for form submission
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formError, setFormError] = useState("")
+  const [formSuccess, setFormSuccess] = useState("")
+  
+  // Function to handle creating a new routine
+  const handleCreateRoutine = async () => {
+    // Reset states
+    setIsSubmitting(true)
+    setFormError("")
+    setFormSuccess("")
+    
+    try {
+      // Validate form
+      if (!newRoutine.name || !newRoutine.description) {
+        setFormError("Please fill out all required fields")
+        return
+      }
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800))
+      
+      // Create new routine with ID
+      const newRoutineWithId = {
+        ...newRoutine,
+        id: localRoutines.length + 1,
+        exercises: [],
+        history: []
+      }
+      
+      // Add to routines
+      setLocalRoutines([...localRoutines, newRoutineWithId])
+      setFormSuccess("Routine created successfully!")
+      
+      // Reset form after delay
+      setTimeout(() => {
+        setNewRoutine({
+          name: "",
+          description: "",
+          category: "Strength",
+          level: "Beginner",
+          frequency: "3x per week",
+          duration: "45 minutes",
+          exercises: []
+        })
+        setIsCreating(false)
+        setFormSuccess("")
+      }, 1500)
+    } catch (error) {
+      console.error("Error creating routine:", error)
+      setFormError("Failed to create routine. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+    // State for delete functionality
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  
+  // Function to handle deleting a routine
+  const handleDeleteRoutine = async () => {
+    if (!deleteId) return
+    
+    setIsDeleting(true)
+    
+    try {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800))
+      
+      // Remove routine from list
+      setLocalRoutines(localRoutines.filter(routine => routine.id !== deleteId))
+      
+      // Show success message or notification here if desired
+      setShowDeleteDialog(false)
+      setDeleteId(null)
+    } catch (error) {
+      console.error("Error deleting routine:", error)
+      // Handle error case
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   return (
-    <div className="container py-8 max-w-7xl">
+    <div className="container mx-auto py-8 max-w-7xl">
       <div className="flex flex-col space-y-6">
         <div className="flex flex-col space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">My Workout Routines</h1>
@@ -101,8 +195,7 @@ export default function RoutinesPage() {
                 <DropdownMenuItem>Advanced</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
-            <Dialog>
+              <Dialog open={isCreating} onOpenChange={setIsCreating}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
                   <Plus className="h-4 w-4" /> 
@@ -114,23 +207,75 @@ export default function RoutinesPage() {
                   <DialogTitle>Create New Routine</DialogTitle>
                   <DialogDescription>
                     Build a custom workout routine tailored to your fitness goals.
-                  </DialogDescription>
-                </DialogHeader>
-                {/* Form fields would go here */}
+                  </DialogDescription>                </DialogHeader>
                 <div className="space-y-4 py-4">
+                  {formError && (
+                    <div className="p-3 text-sm border border-red-300 bg-red-50 text-red-600 rounded">
+                      {formError}
+                    </div>
+                  )}
+                  {formSuccess && (
+                    <div className="p-3 text-sm border border-green-300 bg-green-50 text-green-600 rounded">
+                      {formSuccess}
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Routine Name</label>
-                    <Input placeholder="e.g., Monday Strength Training" />
+                    <Input 
+                      placeholder="e.g., Monday Strength Training" 
+                      value={newRoutine.name}
+                      onChange={(e) => setNewRoutine({...newRoutine, name: e.target.value})}
+                      required
+                      disabled={isSubmitting}
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Description</label>
-                    <Input placeholder="Brief description of this routine" />
+                    <Input 
+                      placeholder="Brief description of this routine" 
+                      value={newRoutine.description}
+                      onChange={(e) => setNewRoutine({...newRoutine, description: e.target.value})}
+                      required
+                      disabled={isSubmitting}
+                    />
                   </div>
-                  {/* Additional fields would go here */}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline">Cancel</Button>
-                  <Button>Create</Button>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Category</label>
+                    <select 
+                      className="w-full rounded-md border border-input bg-background px-3 py-2"
+                      value={newRoutine.category}
+                      onChange={(e) => setNewRoutine({...newRoutine, category: e.target.value})}
+                    >
+                      <option value="Strength">Strength</option>
+                      <option value="Cardio">Cardio</option>
+                      <option value="Core">Core</option>
+                      <option value="Flexibility">Flexibility</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Level</label>
+                    <select 
+                      className="w-full rounded-md border border-input bg-background px-3 py-2"
+                      value={newRoutine.level}
+                      onChange={(e) => setNewRoutine({...newRoutine, level: e.target.value})}
+                    >
+                      <option value="Beginner">Beginner</option>
+                      <option value="Intermediate">Intermediate</option>
+                      <option value="Advanced">Advanced</option>
+                    </select>
+                  </div>
+                </div>                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCreating(false)} disabled={isSubmitting}>Cancel</Button>
+                  <Button onClick={handleCreateRoutine} disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <span className="animate-spin mr-2">⏳</span>
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Routine"
+                    )}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -180,8 +325,13 @@ export default function RoutinesPage() {
                                 <Calendar className="mr-2 h-4 w-4" />
                                 Schedule
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive">
+                              <DropdownMenuSeparator />                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => {
+                                  setDeleteId(routine.id)
+                                  setShowDeleteDialog(true)
+                                }}
+                              >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete
                               </DropdownMenuItem>
@@ -225,9 +375,8 @@ export default function RoutinesPage() {
                   <div className="rounded-full bg-muted p-3 mb-4">
                     <Search className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-medium">No routines found</h3>
-                  <p className="text-muted-foreground mt-1 mb-4">
-                    We couldn't find any routines matching your search.
+                  <h3 className="text-lg font-medium">No routines found</h3>                  <p className="text-muted-foreground mt-1 mb-4">
+                    We couldn&apos;t find any routines matching your search.
                   </p>
                   <Button variant="outline" onClick={() => setSearchQuery("")}>Clear Search</Button>
                 </div>
@@ -250,6 +399,41 @@ export default function RoutinesPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Routine</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this routine? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteDialog(false)} 
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteRoutine} 
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -44,21 +44,76 @@ import { Separator } from "@/components/ui/separator"
 
 // Import custom data hooks for API integration
 import { useSocialFeed } from "@/lib/data-hooks"
+import type { SocialPost, Comment } from "@/lib/types"
 
 export default function SocialPage() {
   const { posts: socialPosts, status, error } = useSocialFeed()
   const [activeTab, setActiveTab] = useState("feed")
   const [newPostContent, setNewPostContent] = useState("")
+    const [isSubmittingPost, setIsSubmittingPost] = useState(false)
+  const [postError, setPostError] = useState("")
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
   
-  const handlePostSubmit = (e: React.FormEvent) => {
+  const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In production: submit post to backend
-    alert(`Post submitted: ${newPostContent}`)
-    setNewPostContent("")
+    
+    if (!newPostContent.trim()) {
+      setPostError("Please write something before posting")
+      return
+    }
+    
+    setIsSubmittingPost(true)
+    setPostError("")
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 800))
+      
+      // In a real app, we would call an API to create the post
+      // For now, we'll just simulate success
+      
+      // Create new post object
+      const newPost = {
+        id: Math.floor(Math.random() * 1000) + socialPosts.length + 1,
+        user: {
+          id: 999,
+          name: "Demo User",
+          username: "demo_user",
+          avatar: "/images/avatars/user.jpg"
+        },
+        content: newPostContent,
+        image: selectedImage,
+        likes: 0,
+        comments: [],
+        timestamp: new Date().toISOString()
+      }
+      
+      // Add to beginning of posts array
+      setPosts([newPost, ...socialPosts])
+      
+      // Clear form
+      setNewPostContent("")
+      setSelectedImage(null)
+    } catch (error) {
+      console.error("Error creating post:", error)
+      setPostError("Failed to create post. Please try again.")
+    } finally {
+      setIsSubmittingPost(false)
+    }
   }
+  
+  // Function to handle image selection
+  const handleImageSelection = () => {
+    // In a real app, we'd open a file picker
+    // For demo purposes, we'll just simulate selecting an image
+    setSelectedImage("/images/social/workout-completion.jpg")
+  }
+  
+  // Need to define setPosts since we're adding new posts
+  const [posts, setPosts] = useState(socialPosts)
 
   return (
-    <div className="container py-8 max-w-5xl">
+    <div className="container mx-auto py-8 max-w-5xl">
       <div className="flex flex-col space-y-6">
         <div className="flex flex-col space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">FitTrack Community</h1>
@@ -77,6 +132,11 @@ export default function SocialPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handlePostSubmit} className="space-y-4">
+                  {postError && (
+                    <div className="p-3 text-sm border border-red-300 bg-red-50 text-red-600 rounded">
+                      {postError}
+                    </div>
+                  )}
                   <div className="flex gap-3">
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage src="/images/avatars/user.jpg" alt="User" />
@@ -87,20 +147,62 @@ export default function SocialPage() {
                       placeholder="Share your fitness achievement..."
                       value={newPostContent}
                       onChange={(e) => setNewPostContent(e.target.value)}
+                      disabled={isSubmittingPost}
                     />
                   </div>
+                  
+                  {selectedImage && (
+                    <div className="relative">
+                      <img 
+                        src={selectedImage} 
+                        alt="Selected workout" 
+                        className="w-full h-48 object-cover rounded-md" 
+                      />
+                      <Button 
+                        variant="secondary" 
+                        size="icon"
+                        className="absolute top-2 right-2 h-8 w-8 rounded-full"
+                        onClick={() => setSelectedImage(null)}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between items-center">
                     <div className="flex gap-2">
-                      <Button type="button" variant="outline" size="sm" className="gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-2"
+                        onClick={handleImageSelection}
+                        disabled={isSubmittingPost}
+                      >
                         <ImageIcon className="h-4 w-4" />
                         Photo
                       </Button>
-                      <Button type="button" variant="outline" size="sm" className="gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-2"
+                        disabled={isSubmittingPost}
+                      >
                         <TrendingUp className="h-4 w-4" />
                         Achievement
                       </Button>
                     </div>
-                    <Button type="submit" disabled={!newPostContent.trim()}>Post</Button>
+                    <Button type="submit" disabled={isSubmittingPost || !newPostContent.trim()}>
+                      {isSubmittingPost ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          Posting...
+                        </>
+                      ) : (
+                        "Post"
+                      )}
+                    </Button>
                   </div>
                 </form>
               </CardContent>
@@ -230,6 +332,7 @@ function PostCard({ post }: { post: any }) {
   const [likes, setLikes] = useState(post.likes)
   const [showComments, setShowComments] = useState(false)
   const [newComment, setNewComment] = useState("")
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   
   const handleLike = () => {
     if (isLiked) {
@@ -238,13 +341,52 @@ function PostCard({ post }: { post: any }) {
       setLikes(likes + 1)
     }
     setIsLiked(!isLiked)
+    
+    // Animate heart
+    const likeBtn = document.querySelector(`#like-btn-${post.id}`)
+    if (likeBtn) {
+      likeBtn.classList.add('scale-125')
+      setTimeout(() => {
+        likeBtn?.classList.remove('scale-125')
+      }, 200)
+    }
   }
   
-  const handleCommentSubmit = (e: React.FormEvent) => {
+  const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In production: submit comment to backend
-    alert(`Comment submitted: ${newComment}`)
-    setNewComment("")
+    
+    if (!newComment.trim()) return
+    
+    setIsSubmittingComment(true)
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Create new comment
+      const newCommentObj = {
+        id: Math.floor(Math.random() * 1000) + (post.comments?.length || 0) + 1,
+        user: {
+          id: 999,
+          name: "Demo User",
+          username: "demo_user",
+          avatar: "/images/avatars/user.jpg"
+        },
+        content: newComment,
+        timestamp: new Date().toISOString()
+      }
+      
+      // Add to post comments (in a real app, we would update the state through API)
+      if (!post.comments) post.comments = []
+      post.comments.push(newCommentObj)
+      
+      // Clear form
+      setNewComment("")
+    } catch (error) {
+      console.error("Error posting comment:", error)
+    } finally {
+      setIsSubmittingComment(false)
+    }
   }
 
   return (
@@ -356,8 +498,7 @@ function PostCard({ post }: { post: any }) {
                 <p className="text-sm text-center text-muted-foreground">No comments yet</p>
               )}
               
-              {/* Add comment form */}
-              <form onSubmit={handleCommentSubmit} className="flex gap-3">
+              {/* Add comment form */}              <form onSubmit={handleCommentSubmit} className="flex gap-3">
                 <Avatar className="h-8 w-8 flex-shrink-0">
                   <AvatarImage src="/images/avatars/user.jpg" alt="User" />
                   <AvatarFallback>U</AvatarFallback>
@@ -368,9 +509,19 @@ function PostCard({ post }: { post: any }) {
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     className="flex-1"
+                    disabled={isSubmittingComment}
                   />
-                  <Button type="submit" size="sm" disabled={!newComment.trim()}>
-                    <Send className="h-4 w-4" />
+                  <Button 
+                    type="submit" 
+                    size="sm" 
+                    disabled={!newComment.trim() || isSubmittingComment}
+                    className="transition-all"
+                  >
+                    {isSubmittingComment ? (
+                      <span className="animate-spin">⏳</span>
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </form>

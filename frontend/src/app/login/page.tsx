@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -15,7 +16,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Form,
   FormControl,
@@ -39,22 +39,43 @@ export default function Login() {
     email: "",
     password: "",
   }
-
+  // State for loading and error handling
+  const [isLoading, setIsLoading] = useState(false)
+  const [loginError, setLoginError] = useState("")
+  
   // Initialize form
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     defaultValues,
   })
-
-  // Handle form submission
-  function onSubmit(data: LoginFormValues) {
-    // In a real app, you would call your backend API here
-    console.log(data)
-    // TODO: Add API call to login
+    // Handle form submission
+  async function onSubmit(data: LoginFormValues) {
+    setIsLoading(true)
+    setLoginError("")
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 800))
+      
+      // Simulate successful login for demo purposes
+      localStorage.setItem("authToken", "demo-token-123")
+      localStorage.setItem("user", JSON.stringify({
+        name: "Demo User",
+        email: data.email,
+      }))
+      
+      // Redirect to dashboard
+      window.location.href = "/routines"
+    } catch (error) {
+      console.error("Login error:", error)
+      setLoginError("Invalid email or password. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="container flex h-screen w-full flex-col items-center justify-center">
+    <div className="container mx-auto flex h-screen w-full flex-col items-center justify-center">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -67,8 +88,12 @@ export default function Login() {
             <CardDescription>
               Enter your email and password to login to your account
             </CardDescription>
-          </CardHeader>
-          <CardContent>
+          </CardHeader>          <CardContent>
+            {loginError && (
+              <div className="mb-4 p-3 text-sm border border-red-300 bg-red-50 text-red-600 rounded">
+                {loginError}
+              </div>
+            )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -106,9 +131,15 @@ export default function Login() {
                       <FormMessage />
                     </FormItem>
                   )}
-                />
-                <Button type="submit" className="w-full">
-                  Sign In
+                />                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <span className="animate-spin mr-2">⏳</span>
+                      Signing in...
+                    </>
+                  ) : (
+                    "Sign In"
+                  )}
                 </Button>
               </form>
             </Form>

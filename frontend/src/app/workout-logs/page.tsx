@@ -97,7 +97,7 @@ export default function WorkoutLogsPage() {
   const formattedDate = format(selectedDate, 'EEEE, MMMM d, yyyy')
   
   return (
-    <div className="container py-8 max-w-7xl">
+    <div className="container mx-auto py-8 max-w-7xl">
       <div className="flex flex-col space-y-6">
         <div className="flex flex-col space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Workout Log</h1>
@@ -121,24 +121,70 @@ export default function WorkoutLogsPage() {
                   Log Workout
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
+              <DialogContent className="sm:max-w-[500px]">                <DialogHeader>
                   <DialogTitle>Log New Workout</DialogTitle>
                   <DialogDescription>
                     Record the details of your completed workout session.
                   </DialogDescription>
                 </DialogHeader>
-                {/* Form fields would go here */}
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Select Workout</label>
-                    {/* Dropdown would go here */}
+                    <label className="text-sm font-medium">Workout Date</label>
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4 opacity-50" />
+                      <input 
+                        type="date" 
+                        className="w-full rounded-md border border-input bg-background px-3 py-2"
+                        defaultValue={format(new Date(), "yyyy-MM-dd")}
+                      />
+                    </div>
                   </div>
-                  {/* Additional fields would go here */}
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Routine</label>
+                    <select className="w-full rounded-md border border-input bg-background px-3 py-2">
+                      <option value="">Choose a routine</option>
+                      <option value="1">Full Body Strength</option>
+                      <option value="2">HIIT Cardio Blast</option>
+                      <option value="3">Upper Body Focus</option>
+                      <option value="4">Core Crusher</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Duration</label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" 
+                        placeholder="45"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2"
+                      />
+                      <span className="text-sm">minutes</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">How did you feel?</label>
+                    <select className="w-full rounded-md border border-input bg-background px-3 py-2">
+                      <option value="Great">Great - Full of energy</option>
+                      <option value="Good">Good - Normal energy levels</option>
+                      <option value="Average">Average - Could have been better</option>
+                      <option value="Tired">Tired - Low energy</option>
+                      <option value="Exhausted">Exhausted - Very difficult to complete</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Notes (Optional)</label>
+                    <textarea 
+                      placeholder="Add any comments about your workout..."
+                      className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2"
+                    ></textarea>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline">Cancel</Button>
-                  <Button>Save Workout</Button>
+                  <Button onClick={() => alert("Workout logged successfully!")}>Save Workout</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

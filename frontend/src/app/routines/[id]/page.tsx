@@ -51,15 +51,39 @@ import { Input } from "@/components/ui/input"
 // Import custom data hooks for API integration
 import { useRoutine, Routine, Exercise, WorkoutSession } from "../../../lib/data-hooks"
 
-export default function RoutineDetailPage({ params }: { params: { id: string } }) {  const { routine, status } = useRoutine(params.id)
+export default function RoutineDetailPage({ params }: { params: { id: string } }) {  
+  const { routine, status } = useRoutine(params.id)
   const [isStarred, setIsStarred] = useState(false)
+  const [isStartingWorkout, setIsStartingWorkout] = useState(false)
+  const [workoutInProgress, setWorkoutInProgress] = useState(false)
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   
   // Loading state is derived from the status
   const loading = status === "loading" || status === "idle"
+  
+  // Handle starting a workout
+  const startWorkout = () => {
+    setIsStartingWorkout(true)
+  }
+  
+  // Handle confirming workout start
+  const confirmStartWorkout = () => {
+    setWorkoutInProgress(true)
+    setIsStartingWorkout(false)
+    // In a real app, you'd initialize workout tracking here
+  }
+  
+  // Handle finishing the workout
+  const finishWorkout = () => {
+    setWorkoutInProgress(false)
+    setCurrentExerciseIndex(0)
+    alert("Workout completed! Great job!")
+    // In a real app, you'd save workout data here
+  }
 
   if (loading) {
     return (
-      <div className="container py-8 max-w-5xl">
+      <div className="container mx-auto py-8 max-w-5xl">
         <div className="flex flex-col space-y-6 items-center justify-center min-h-[400px]">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
           <p className="text-muted-foreground">Loading routine details...</p>
@@ -70,7 +94,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
 
   if (!routine) {
     return (
-      <div className="container py-8 max-w-5xl">
+      <div className="container mx-auto py-8 max-w-5xl">
         <div className="flex flex-col space-y-6 items-center justify-center min-h-[400px]">
           <div className="rounded-full bg-amber-100 p-3 dark:bg-amber-900">
             <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
@@ -90,7 +114,7 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
   }
 
   return (
-    <div className="container py-8 max-w-5xl">
+    <div className="container mx-auto py-8 max-w-5xl">
       <div className="flex flex-col space-y-6">
         {/* Back navigation */}
         <div>
@@ -111,20 +135,46 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
             </p>
           </div>
           
-          <div className="flex gap-2 self-start">
-            <Button 
+          <div className="flex gap-2 self-start">            <Button 
               variant="outline" 
               size="icon"
-              onClick={() => setIsStarred(!isStarred)}
+              onClick={() => {
+                setIsStarred(!isStarred);
+                // Show feedback to user
+                if (!isStarred) {
+                  alert("Routine added to favorites!");
+                }
+              }}
             >
               <Star className={`h-4 w-4 ${isStarred ? 'fill-yellow-400 text-yellow-400' : ''}`} />
               <span className="sr-only">Favorite</span>
             </Button>
-            
-            <Button variant="outline" size="icon">
-              <Share2 className="h-4 w-4" />
-              <span className="sr-only">Share</span>
-            </Button>
+              <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Share2 className="h-4 w-4" />
+                  <span className="sr-only">Share</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert("Link copied to clipboard!");
+                }}>
+                  Copy Link
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  window.open(`https://twitter.com/intent/tweet?text=Check%20out%20this%20workout%20routine!&url=${encodeURIComponent(window.location.href)}`);
+                }}>
+                  Share on Twitter
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`);
+                }}>
+                  Share on Facebook
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -149,11 +199,71 @@ export default function RoutineDetailPage({ params }: { params: { id: string } }
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
-            <Button className="gap-2">
+              <Button 
+              className="gap-2"
+              onClick={startWorkout}
+            >
               <PlayCircle className="h-4 w-4" />
               Start Workout
             </Button>
+            
+            {/* Workout Start Dialog */}
+            <Dialog open={isStartingWorkout} onOpenChange={setIsStartingWorkout}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Start Workout</DialogTitle>
+                  <DialogDescription>
+                    You&apos;re about to start {routine?.name}. Get ready!
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <p>This workout includes {routine?.exercises?.length || 0} exercises and will take approximately {routine?.duration}.</p>
+                  <p className="mt-2">Make sure you have the necessary equipment ready and enough space to exercise safely.</p>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsStartingWorkout(false)}>Cancel</Button>
+                  <Button onClick={confirmStartWorkout}>Start Now</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            
+            {/* Workout Progress Dialog */}
+            <Dialog open={workoutInProgress} onOpenChange={setWorkoutInProgress}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Workout in Progress</DialogTitle>
+                  <DialogDescription>
+                    {routine?.name} - Exercise {currentExerciseIndex + 1} of {routine?.exercises?.length || 0}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  {routine?.exercises && routine.exercises[currentExerciseIndex] && (
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-bold">{routine.exercises[currentExerciseIndex].name}</h3>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p><strong>Sets:</strong> {routine.exercises[currentExerciseIndex].sets}</p>
+                          <p><strong>Reps:</strong> {routine.exercises[currentExerciseIndex].reps}</p>
+                          <p><strong>Rest:</strong> {routine.exercises[currentExerciseIndex].rest}</p>
+                        </div>
+                        <div className="text-4xl font-bold">{currentExerciseIndex + 1}/{routine.exercises.length}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                  {currentExerciseIndex < (routine?.exercises?.length || 0) - 1 ? (
+                    <Button className="w-full" onClick={() => setCurrentExerciseIndex(currentExerciseIndex + 1)}>
+                      Next Exercise
+                    </Button>
+                  ) : (
+                    <Button className="w-full" onClick={finishWorkout}>
+                      Complete Workout
+                    </Button>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         

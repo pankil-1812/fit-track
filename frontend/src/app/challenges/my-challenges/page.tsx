@@ -50,7 +50,7 @@ export default function MyChallengesPage() {
   }
 
   return (
-    <div className="container py-8 max-w-7xl">
+    <div className="container mx-auto py-8 max-w-7xl">
       <div className="flex flex-col space-y-6">
         {/* Back navigation */}
         <div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
@@ -13,7 +13,8 @@ import {
   // Share2,  // Commented out as it's not used
   AlertCircle,
   Clock,
-  Award
+  Award,
+  Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { 
@@ -24,6 +25,16 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card"
+import { toast } from "@/components/ui/use-toast"
+import { challengeService } from "@/lib/api"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Tabs,
   TabsContent,
@@ -34,18 +45,241 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 
 // Import custom data hooks for API integration
-import { useChallenge, Challenge, ChallengeDay } from "../../../lib/data-hooks"
+import { useChallenge, type ChallengeDay } from "../../../lib/data-hooks"
+
+// ChallengeDaysTimeline component with proper state management
+const ChallengeDaysTimeline = ({ days, challengeId }: { days: ChallengeDay[], challengeId: string }) => {
+  const [completedDays, setCompletedDays] = useState<Record<number, boolean>>({});
+  const [isUpdating, setIsUpdating] = useState<number | null>(null);
+
+  // Initialize completed state from the days prop
+  useEffect(() => {
+    if (days) {
+      const initialState = days.reduce((acc, day) => {
+        acc[day.day] = day.completed;
+        return acc;
+      }, {} as Record<number, boolean>);
+      
+      // Check if we have local storage data for this challenge
+      const storedProgress = localStorage.getItem(`challenge-${challengeId}-progress`);
+      if (storedProgress) {
+        try {
+          const parsedProgress = JSON.parse(storedProgress);
+          setCompletedDays(parsedProgress);
+        } catch (e) {
+          console.error("Error parsing stored challenge progress:", e);
+          setCompletedDays(initialState);
+        }
+      } else {
+        setCompletedDays(initialState);
+      }
+    }
+  }, [days, challengeId]);
+
+  // Persist completed days to localStorage
+  useEffect(() => {
+    if (Object.keys(completedDays).length > 0) {
+      localStorage.setItem(`challenge-${challengeId}-progress`, JSON.stringify(completedDays));
+    }
+  }, [completedDays, challengeId]);
+
+  // Handle marking a day as complete
+  const handleMarkComplete = async (day: number) => {
+    setIsUpdating(day);
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Update state
+      setCompletedDays(prev => ({
+        ...prev,
+        [day]: true
+      }));
+      
+      // Show feedback to user
+      toast({
+        title: "Day marked complete!",
+        description: `You've completed day ${day}. Great work!`,
+      });
+    } catch (error) {
+      console.error("Error updating challenge progress:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update your progress. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  if (!days || days.length === 0) {
+    return <p>No challenge days available yet.</p>;
+  }
+
+  return (
+    <>
+      {days.map((day, index) => {
+        const isCompleted = completedDays[day.day] || false;
+        
+        return (
+          <div key={index} className="flex">
+            <div className="mr-4 flex flex-col items-center">
+              <div className={`rounded-full p-1 ${isCompleted ? 'bg-primary' : 'bg-muted'}`}>
+                <Check className={`h-4 w-4 ${isCompleted ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+              </div>
+              {index < (days.length - 1) && (
+                <div className="h-full w-px bg-muted my-1"></div>
+              )}
+            </div>
+            <div className="flex-1 pb-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div>
+                  <p className="font-medium">Day {day.day}</p>
+                  <p className="text-sm text-muted-foreground">{day.target}</p>
+                </div>                <Button 
+                  variant={isCompleted ? "outline" : "default"} 
+                  size="sm" 
+                  className="mt-2 md:mt-0"
+                  disabled={isCompleted || isUpdating === day.day}
+                  onClick={() => handleMarkComplete(day.day)}
+                >
+                  {isUpdating === day.day ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    isCompleted ? 'Completed' : 'Mark Complete'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+};
 
 export default function ChallengeDetailPage({ params }: { params: { id: string } }) {
   const { challenge, status } = useChallenge(params.id)
   const [isJoined, setIsJoined] = useState(false)
+  const [showJoinConfirmation, setShowJoinConfirmation] = useState(false)  const [isLoadingAction, setIsLoadingAction] = useState(false)
   
   // Loading state is derived from the status
   const loading = status === "loading" || status === "idle"
+  
+  // Check if user is already participating in this challenge
+  useEffect(() => {
+    if (challenge) {
+      // This would typically come from the API response
+      // For now we're using localStorage to persist the joined state
+      const joinedChallenges = localStorage.getItem('joinedChallenges')
+      if (joinedChallenges) {
+        const challenges = JSON.parse(joinedChallenges)
+        setIsJoined(challenges.includes(Number(params.id)))
+      }
+    }
+  }, [challenge, params.id])
+  
+  // Handle joining or leaving challenge
+  const toggleChallengeParticipation = () => {
+    if (isJoined) {
+      // If already joined, ask for confirmation before leaving
+      if (confirm("Are you sure you want to leave this challenge? Your progress will be lost.")) {
+        handleLeaveChallenge()
+      }
+    } else {
+      // If not joined, show confirmation dialog
+      setShowJoinConfirmation(true)
+    }
+  }
+  
+  // Handle leaving challenge
+  const handleLeaveChallenge = async () => {    setIsLoadingAction(true)
+    
+    try {
+      // Call API to leave challenge
+      if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 800))
+        
+        // Update local storage for persistence between page refreshes
+        const joinedChallenges = localStorage.getItem('joinedChallenges')
+        if (joinedChallenges) {
+          const challenges = JSON.parse(joinedChallenges)
+          localStorage.setItem(
+            'joinedChallenges', 
+            JSON.stringify(challenges.filter((id: number) => id !== Number(params.id)))
+          )
+        }
+      } else {
+        // Real API call
+        await challengeService.leaveChallenge(params.id)
+      }
+      
+      setIsJoined(false)
+      // Show feedback
+      toast({
+        title: "Challenge left",
+        description: "We hope to see you in another challenge soon!",
+        variant: "default",
+      })
+    } catch (error) {      console.error("Error leaving challenge:", error)
+      toast({
+        title: "Error",
+        description: "Failed to leave the challenge. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingAction(false)
+    }
+  }
+  
+  // Handle confirming challenge join
+  const confirmJoinChallenge = async () => {    setIsLoadingAction(true)
+    setShowJoinConfirmation(false)
+    
+    try {
+      // Call API to join challenge
+      if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 800))
+        
+        // Update local storage for persistence between page refreshes
+        const joinedChallenges = localStorage.getItem('joinedChallenges')
+        const challenges = joinedChallenges ? JSON.parse(joinedChallenges) : []
+        if (!challenges.includes(Number(params.id))) {
+          challenges.push(Number(params.id))
+        }
+        localStorage.setItem('joinedChallenges', JSON.stringify(challenges))
+      } else {
+        // Real API call
+        await challengeService.joinChallenge(params.id)
+      }
+      
+      setIsJoined(true)
+      toast({
+        title: "Challenge joined",
+        description: "Good luck with your challenge!",
+        variant: "default",
+      })
+    } catch (error) {      console.error("Error joining challenge:", error)
+      toast({
+        title: "Error",
+        description: "Failed to join the challenge. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingAction(false)
+    }
+  }
 
   if (loading) {
     return (
-      <div className="container py-8 max-w-5xl">
+      <div className="container mx-auto py-8 max-w-5xl">
         <div className="flex flex-col space-y-6 items-center justify-center min-h-[400px]">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
           <p className="text-muted-foreground">Loading challenge details...</p>
@@ -56,7 +290,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
 
   if (!challenge) {
     return (
-      <div className="container py-8 max-w-5xl">
+      <div className="container mx-auto py-8 max-w-5xl">
         <div className="flex flex-col space-y-6 items-center justify-center min-h-[400px]">
           <div className="rounded-full bg-amber-100 p-3 dark:bg-amber-900">
             <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
@@ -77,7 +311,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
   }
 
   return (
-    <div className="container py-8 max-w-5xl">
+    <div className="container mx-auto py-8 max-w-5xl">
       <div className="flex flex-col space-y-6">
         {/* Back navigation */}
         <div>
@@ -179,18 +413,43 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               </div>
             </CardContent>
           </Card>
-        </motion.div>
-        
-        {/* Join challenge button */}
+        </motion.div>          {/* Join challenge button */}
         <div className="flex justify-center">
           <Button 
             size="lg" 
             className="px-8"
-            onClick={() => setIsJoined(!isJoined)}
+            onClick={toggleChallengeParticipation}
+            disabled={isLoadingAction}
           >
-            {isJoined ? 'Leave Challenge' : 'Join Challenge'}
+            {isLoadingAction ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isJoined ? 'Leaving...' : 'Joining...'}
+              </>
+            ) : (
+              isJoined ? 'Leave Challenge' : 'Join Challenge'
+            )}
           </Button>
         </div>
+        {/* Join Challenge Confirmation Dialog */}
+        <Dialog open={showJoinConfirmation} onOpenChange={setShowJoinConfirmation}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Join {challenge?.name}</DialogTitle>              <DialogDescription>
+                Are you ready to commit to this challenge? Let&apos;s get started!
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <p><strong>Duration:</strong> {challenge?.duration}</p>
+              <p><strong>Difficulty:</strong> {challenge?.difficulty}</p>
+              <p className="mt-4">By joining this challenge, you commit to completing the daily tasks and tracking your progress regularly.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowJoinConfirmation(false)}>Cancel</Button>
+              <Button onClick={confirmJoinChallenge}>Join Challenge</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         
         {/* Challenge content tabs */}
         <Tabs defaultValue="overview" className="w-full mt-6">
@@ -272,39 +531,10 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               <CardHeader>
                 <CardTitle>Challenge Schedule</CardTitle>
                 <CardDescription>Daily tasks and progress tracking</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* Timeline view of challenge days */}
+              </CardHeader>              <CardContent>
+                <div className="space-y-6">                  {/* Timeline view of challenge days */}
                   <div className="space-y-4">
-                    {challenge.days && challenge.days.map((day: ChallengeDay, index: number) => (
-                      <div key={index} className="flex">
-                        <div className="mr-4 flex flex-col items-center">
-                          <div className={`rounded-full p-1 ${day.completed ? 'bg-primary' : 'bg-muted'}`}>
-                            <Check className={`h-4 w-4 ${day.completed ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
-                          </div>
-                          {index < (challenge.days?.length - 1) && (
-                            <div className="h-full w-px bg-muted my-1"></div>
-                          )}
-                        </div>
-                        <div className="flex-1 pb-6">
-                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                            <div>
-                              <p className="font-medium">Day {day.day}</p>
-                              <p className="text-sm text-muted-foreground">{day.target}</p>
-                            </div>
-                            <Button 
-                              variant={day.completed ? "outline" : "default"} 
-                              size="sm" 
-                              className="mt-2 md:mt-0"
-                              disabled={day.completed}
-                            >
-                              {day.completed ? 'Completed' : 'Mark Complete'}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                    <ChallengeDaysTimeline days={challenge.days} challengeId={params.id} />
                   </div>
                   
                   {/* Placeholder for days not defined in the mock data */}
