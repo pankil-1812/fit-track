@@ -43,12 +43,23 @@ import {
 import { useChallenges } from "@/lib/data-hooks"
 
 export default function ChallengesPage() {
-    const { challenges, status, error } = useChallenges()
+    const { challenges } = useChallenges()
     const [searchQuery, setSearchQuery] = useState("")
     const [activeTab, setActiveTab] = useState("all")
 
     // Filter challenges based on search and active tab
-    const filteredChallenges = challenges.filter(challenge => {
+    const filteredChallenges = challenges.filter((challenge: {
+        name: string;
+        description: string;
+        difficulty: string;
+        id: string;
+        image?: string;
+        duration: string;
+        participants: number;
+        progress: number;
+        endDate: string;
+        days: { completed: boolean }[];
+    }) => {
         // Filter by search query
         const matchesSearch = challenge.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             challenge.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -224,7 +235,20 @@ export default function ChallengesPage() {
 }
 
 // Challenge card component
-function ChallengeCard({ challenge }: { challenge: any }) {
+function ChallengeCard({ challenge }: {
+    challenge: {
+        name: string;
+        description: string;
+        difficulty: string;
+        id: string;
+        image?: string;
+        duration: string;
+        participants: number;
+        progress: number;
+        endDate: string;
+        days: { completed: boolean }[];
+    }
+}) {
     const [isJoined, setIsJoined] = useState(false)
 
     // Check if user is already participating in this challenge
@@ -305,7 +329,20 @@ function ChallengeCard({ challenge }: { challenge: any }) {
 }
 
 // My Challenge card component
-function MyChallengeCard({ challenge }: { challenge: any }) {
+function MyChallengeCard({ challenge }: {
+    challenge: {
+        name: string;
+        description: string;
+        difficulty: string;
+        id: string;
+        image?: string;
+        duration: string;
+        participants: number;
+        progress: number;
+        endDate: string;
+        days: { completed: boolean }[];
+    }
+}) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -334,7 +371,7 @@ function MyChallengeCard({ challenge }: { challenge: any }) {
                                 <span>{challenge.endDate}</span>
                             </div>
                             <span className="font-medium">
-                                {challenge.days.filter((day: any) => day.completed).length} / {challenge.days.length} days
+                                {challenge.days.filter((day) => day.completed).length} / {challenge.days.length} days
                             </span>
                         </div>
                     </div>

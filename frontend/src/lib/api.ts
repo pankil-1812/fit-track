@@ -1,19 +1,13 @@
 import axios from 'axios';
 import {
   User,
-  RegisterUserData,
-  LoginData,
   UserProfileData,
-  UserSettings,
   Routine,
-  Exercise,
-  CompletedExercise,
   CreateRoutineData,
   UpdateRoutineData,
   WorkoutLog,
   CreateWorkoutLogData,
-  UpdateWorkoutLogData,
-  Challenge
+  UpdateWorkoutLogData
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -83,7 +77,7 @@ export const authService = {
   logout: async () => {
     try {
       await api.get('/users/logout');
-    } catch (error) {
+    } catch {
       // ignore
     } finally {
       localStorage.removeItem('authToken');
@@ -396,7 +390,7 @@ export const socialService = {
     return response.data;
   },
   
-  createPost: async (postData: any) => {
+  createPost: async (postData: Record<string, unknown>) => {
     const response = await api.post('/social/posts', postData);
     return response.data;
   },

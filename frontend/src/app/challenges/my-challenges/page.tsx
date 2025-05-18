@@ -34,15 +34,26 @@ import {
 // Import custom data hooks
 import { useUserChallenges } from "@/lib/data-hooks"
 
+// Define a Challenge type for this file
+interface ChallengeDay { day: number; target: string; completed: boolean; }
+interface ChallengeCardType {
+  name: string;
+  description: string;
+  id: string;
+  days: ChallengeDay[];
+  image?: string;
+  progress: number;
+  endDate: string;
+}
+
 export default function MyChallengesPage() {
-  const { userChallenges, status, error } = useUserChallenges()
+  const { userChallenges } = useUserChallenges()
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState("active")
-  
+  // Remove unused activeTab if not used elsewhere
   const { active: activeChallenges, completed: completedChallenges, past: pastChallenges } = userChallenges
   
   // Filter challenges based on search and active tab
-  const getFilteredChallenges = (challengeList: any[]) => {
+  const getFilteredChallenges = (challengeList: ChallengeCardType[]) => {
     return challengeList.filter(challenge => 
       challenge.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       challenge.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -129,7 +140,7 @@ export default function MyChallengesPage() {
                   </div>
                   <h3 className="text-lg font-medium">No completed challenges</h3>
                   <p className="text-muted-foreground mt-1 mb-4">
-                    You haven't completed any challenges yet. Keep working on your active challenges!
+                    You haven&apos;t completed any challenges yet. Keep working on your active challenges!
                   </p>
                   <Button variant="outline" asChild>
                     <Link href="/challenges">View Active Challenges</Link>
@@ -153,7 +164,7 @@ export default function MyChallengesPage() {
                   </div>
                   <h3 className="text-lg font-medium">No past challenges</h3>
                   <p className="text-muted-foreground mt-1 mb-4">
-                    You don't have any expired or abandoned challenges.
+                    You don&apos;t have any expired or abandoned challenges.
                   </p>
                 </div>
               )}
@@ -211,7 +222,7 @@ export default function MyChallengesPage() {
   )
 }
 
-function ActiveChallengeCard({ challenge }: { challenge: any }) {
+function ActiveChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -258,7 +269,7 @@ function ActiveChallengeCard({ challenge }: { challenge: any }) {
                 <span>{challenge.endDate}</span>
               </div>
               <span className="font-medium">
-                {challenge.days.filter((day: any) => day.completed).length} / {challenge.days.length} days
+                {challenge.days.filter((day: ChallengeDay) => day.completed).length} / {challenge.days.length} days
               </span>
             </div>
           </div>
@@ -275,7 +286,7 @@ function ActiveChallengeCard({ challenge }: { challenge: any }) {
   )
 }
 
-function CompletedChallengeCard({ challenge }: { challenge: any }) {
+function CompletedChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
   // For mockup, we'll pretend this challenge is completed
   const completedDate = "Aug 30, 2023"
   
@@ -350,7 +361,7 @@ function CompletedChallengeCard({ challenge }: { challenge: any }) {
   )
 }
 
-function PastChallengeCard({ challenge }: { challenge: any }) {
+function PastChallengeCard({ challenge }: { challenge: ChallengeCardType }) {
   // For mockup, we'll pretend this challenge is expired
   const expiredDate = "Jul 15, 2023"
   

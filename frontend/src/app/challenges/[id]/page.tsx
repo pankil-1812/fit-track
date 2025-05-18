@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
-import { 
+import {
   ArrowLeft,
   Check,
   Users,
@@ -17,13 +17,13 @@ import {
   Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
+import {
+  Card,
+  CardContent,
+  CardDescription,
   // CardFooter,  // Commented out as it's not used
-  CardHeader, 
-  CardTitle 
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
 import { challengeService } from "@/lib/api"
@@ -59,7 +59,7 @@ const ChallengeDaysTimeline = ({ days, challengeId }: { days: ChallengeDay[], ch
         acc[day.day] = day.completed;
         return acc;
       }, {} as Record<number, boolean>);
-      
+
       // Check if we have local storage data for this challenge
       const storedProgress = localStorage.getItem(`challenge-${challengeId}-progress`);
       if (storedProgress) {
@@ -86,17 +86,17 @@ const ChallengeDaysTimeline = ({ days, challengeId }: { days: ChallengeDay[], ch
   // Handle marking a day as complete
   const handleMarkComplete = async (day: number) => {
     setIsUpdating(day);
-    
+
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 800));
-      
+
       // Update state
       setCompletedDays(prev => ({
         ...prev,
         [day]: true
       }));
-      
+
       // Show feedback to user
       toast({
         title: "Day marked complete!",
@@ -122,7 +122,7 @@ const ChallengeDaysTimeline = ({ days, challengeId }: { days: ChallengeDay[], ch
     <>
       {days.map((day, index) => {
         const isCompleted = completedDays[day.day] || false;
-        
+
         return (
           <div key={index} className="flex">
             <div className="mr-4 flex flex-col items-center">
@@ -138,9 +138,9 @@ const ChallengeDaysTimeline = ({ days, challengeId }: { days: ChallengeDay[], ch
                 <div>
                   <p className="font-medium">Day {day.day}</p>
                   <p className="text-sm text-muted-foreground">{day.target}</p>
-                </div>                <Button 
-                  variant={isCompleted ? "outline" : "default"} 
-                  size="sm" 
+                </div>                <Button
+                  variant={isCompleted ? "outline" : "default"}
+                  size="sm"
                   className="mt-2 md:mt-0"
                   disabled={isCompleted || isUpdating === day.day}
                   onClick={() => handleMarkComplete(day.day)}
@@ -166,11 +166,12 @@ const ChallengeDaysTimeline = ({ days, challengeId }: { days: ChallengeDay[], ch
 export default function ChallengeDetailPage({ params }: { params: { id: string } }) {
   const { challenge, status } = useChallenge(params.id)
   const [isJoined, setIsJoined] = useState(false)
-  const [showJoinConfirmation, setShowJoinConfirmation] = useState(false)  const [isLoadingAction, setIsLoadingAction] = useState(false)
-  
+  const [showJoinConfirmation, setShowJoinConfirmation] = useState(false)
+  const [isLoadingAction, setIsLoadingAction] = useState(false)
+
   // Loading state is derived from the status
   const loading = status === "loading" || status === "idle"
-  
+
   // Check if user is already participating in this challenge
   useEffect(() => {
     if (challenge) {
@@ -183,7 +184,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
       }
     }
   }, [challenge, params.id])
-  
+
   // Handle joining or leaving challenge
   const toggleChallengeParticipation = () => {
     if (isJoined) {
@@ -196,22 +197,23 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
       setShowJoinConfirmation(true)
     }
   }
-  
+
   // Handle leaving challenge
-  const handleLeaveChallenge = async () => {    setIsLoadingAction(true)
-    
+  const handleLeaveChallenge = async () => {
+    setIsLoadingAction(true)
+
     try {
       // Call API to leave challenge
       if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 800))
-        
+
         // Update local storage for persistence between page refreshes
         const joinedChallenges = localStorage.getItem('joinedChallenges')
         if (joinedChallenges) {
           const challenges = JSON.parse(joinedChallenges)
           localStorage.setItem(
-            'joinedChallenges', 
+            'joinedChallenges',
             JSON.stringify(challenges.filter((id: number) => id !== Number(params.id)))
           )
         }
@@ -219,7 +221,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
         // Real API call
         await challengeService.leaveChallenge(params.id)
       }
-      
+
       setIsJoined(false)
       // Show feedback
       toast({
@@ -227,7 +229,8 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
         description: "We hope to see you in another challenge soon!",
         variant: "default",
       })
-    } catch (error) {      console.error("Error leaving challenge:", error)
+    } catch (error) {
+      console.error("Error leaving challenge:", error)
       toast({
         title: "Error",
         description: "Failed to leave the challenge. Please try again.",
@@ -237,17 +240,18 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
       setIsLoadingAction(false)
     }
   }
-  
+
   // Handle confirming challenge join
-  const confirmJoinChallenge = async () => {    setIsLoadingAction(true)
+  const confirmJoinChallenge = async () => {
+    setIsLoadingAction(true)
     setShowJoinConfirmation(false)
-    
+
     try {
       // Call API to join challenge
       if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 800))
-        
+
         // Update local storage for persistence between page refreshes
         const joinedChallenges = localStorage.getItem('joinedChallenges')
         const challenges = joinedChallenges ? JSON.parse(joinedChallenges) : []
@@ -259,14 +263,15 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
         // Real API call
         await challengeService.joinChallenge(params.id)
       }
-      
+
       setIsJoined(true)
       toast({
         title: "Challenge joined",
         description: "Good luck with your challenge!",
         variant: "default",
       })
-    } catch (error) {      console.error("Error joining challenge:", error)
+    } catch (error) {
+      console.error("Error joining challenge:", error)
       toast({
         title: "Error",
         description: "Failed to join the challenge. Please try again.",
@@ -322,11 +327,11 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
             </Link>
           </Button>
         </div>
-        
+
         {/* Challenge header with image banner */}
         <div className="relative w-full h-64 rounded-lg overflow-hidden">
           {challenge.image ? (
-            <Image 
+            <Image
               src={challenge.image}
               fill
               alt={challenge.name}
@@ -338,10 +343,10 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               <Trophy className="h-20 w-20 text-muted-foreground" />
             </div>
           )}
-          
+
           {/* Overlay gradient for text readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent"></div>
-          
+
           {/* Challenge title and description */}
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <h1 className="text-3xl font-bold tracking-tight">{challenge.name}</h1>
@@ -350,9 +355,9 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
             </p>
           </div>
         </div>
-        
+
         {/* Challenge stats cards */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
@@ -369,7 +374,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               <p className="text-lg font-medium">{challenge.duration}</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center">
@@ -381,7 +386,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               <p className="text-lg font-medium">{challenge.participants}</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center">
@@ -393,7 +398,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               <p className="text-lg font-medium">{challenge.difficulty}</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center">
@@ -405,8 +410,8 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               <div className="space-y-2">
                 <p className="text-lg font-medium">{challenge.progress}%</p>
                 <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary" 
+                  <div
+                    className="h-full bg-primary"
                     style={{ width: `${challenge.progress}%` }}
                   ></div>
                 </div>
@@ -415,8 +420,8 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
           </Card>
         </motion.div>          {/* Join challenge button */}
         <div className="flex justify-center">
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             className="px-8"
             onClick={toggleChallengeParticipation}
             disabled={isLoadingAction}
@@ -450,7 +455,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        
+
         {/* Challenge content tabs */}
         <Tabs defaultValue="overview" className="w-full mt-6">
           <TabsList className="mb-6">
@@ -458,7 +463,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="participants">Participants</TabsTrigger>
           </TabsList>
-          
+
           {/* Overview tab content */}
           <TabsContent value="overview" className="mt-0 space-y-6">
             <Card>
@@ -473,17 +478,17 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
                     {challenge.description}
                   </p>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div>
                   <h3 className="font-medium text-lg mb-2">How It Works</h3>
                   <p>
-                    Complete daily tasks over {challenge.duration} to finish this challenge. 
-                    Each day has specific targets that you need to meet. Mark your progress daily 
+                    Complete daily tasks over {challenge.duration} to finish this challenge.
+                    Each day has specific targets that you need to meet. Mark your progress daily
                     to stay on track and see your progress.
                   </p>
-                  
+
                   <div className="mt-4 flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className="rounded-full bg-primary/10 p-3 mb-2">
@@ -491,14 +496,14 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
                       </div>
                       <p className="text-sm font-medium">Daily Tasks</p>
                     </div>
-                    
+
                     <div className="flex flex-col items-center">
                       <div className="rounded-full bg-primary/10 p-3 mb-2">
                         <Check className="h-5 w-5 text-primary" />
                       </div>
                       <p className="text-sm font-medium">Track Progress</p>
                     </div>
-                    
+
                     <div className="flex flex-col items-center">
                       <div className="rounded-full bg-primary/10 p-3 mb-2">
                         <Trophy className="h-5 w-5 text-primary" />
@@ -507,9 +512,9 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
                     </div>
                   </div>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div>
                   <h3 className="font-medium text-lg mb-2">Rewards</h3>
                   <p>
@@ -524,7 +529,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           {/* Schedule tab content */}
           <TabsContent value="schedule" className="mt-0">
             <Card>
@@ -536,7 +541,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
                   <div className="space-y-4">
                     <ChallengeDaysTimeline days={challenge.days} challengeId={params.id} />
                   </div>
-                  
+
                   {/* Placeholder for days not defined in the mock data */}
                   <div className="text-center text-muted-foreground text-sm">
                     More days will be revealed as you progress...
@@ -545,7 +550,7 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           {/* Participants tab content */}
           <TabsContent value="participants" className="mt-0">
             <Card>
@@ -578,8 +583,8 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
                             </div>
                           </div>
                           <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-primary" 
+                            <div
+                              className="h-full bg-primary"
                               style={{ width: `${100 - (i * 5)}%` }}
                             ></div>
                           </div>
@@ -587,9 +592,9 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
                       ))}
                     </div>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   {/* Recent joiners */}
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-3">Recently Joined</h3>
@@ -604,10 +609,10 @@ export default function ChallengeDetailPage({ params }: { params: { id: string }
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Friends section */}
                   <Separator />
-                  
+
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-3">Your Friends in This Challenge</h3>
                     <div className="text-center py-8">
