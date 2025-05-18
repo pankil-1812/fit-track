@@ -181,14 +181,9 @@ export function Footer() {
                             <h3 className="font-semibold mb-2 text-lg">Get The App</h3>
                             <div className="flex flex-wrap gap-2">
                                 {/* App Store badge */}
-                                <div className="h-10 px-5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-md flex items-center text-white text-xs cursor-pointer">
-                                    <div className="mr-2">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M16.24 0H7.76C3.4 0 0 3.4 0 7.76v8.48C0 20.6 3.4 24 7.76 24h8.48c4.36 0 7.76-3.4 7.76-7.76V7.76C24 3.4 20.6 0 16.24 0z" fill="#1E293B" />
-                                            <path d="M12 19.35c-0.72 0-1.28-0.46-1.28-1.09s0.56-1.09 1.28-1.09c0.72 0 1.28 0.46 1.28 1.09s-0.56 1.09-1.28 1.09z" fill="white" />
-                                            <path d="M16.27 15.5H7.73v-9h8.54v9z" stroke="white" strokeWidth="1.5" />
-                                            <path d="M10.5 18.5h3" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                                        </svg>
+                                <div className="h-10 p-2 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-md flex items-center text-white text-xs cursor-pointer">
+                                    <div className="m-2">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Apple_logo_grey.svg/1724px-Apple_logo_grey.svg.png" alt="App Store" className="h-8" />
                                     </div>
                                     <div>
                                         <div className="text-[10px] opacity-75">Download on the</div>
@@ -199,9 +194,7 @@ export function Footer() {
                                 {/* Google Play badge */}
                                 <div className="h-10 px-5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-md flex items-center text-white text-xs cursor-pointer">
                                     <div className="mr-2">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M3 2v20l15-10L3 2z" fill="white" />
-                                        </svg>
+                                        <img src="https://static.vecteezy.com/system/resources/previews/017/395/379/non_2x/google-play-store-mobile-apps-logo-free-png.png" alt="Google Play" className="h-8" />
                                     </div>
                                     <div>
                                         <div className="text-[10px] opacity-75">GET IT ON</div>

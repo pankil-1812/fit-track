@@ -663,7 +663,7 @@ export default function Home() {
                       <div className="text-xs text-slate-400 mb-1">Today's Progress</div>
                       <div className="text-xl font-bold text-white">78%</div>
                       <div className="mt-2 h-2 bg-slate-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full" style={{ width: '78%' }}></div>
+                        <div className="h-full bg-white dark:bg-primary rounded-full" style={{ width: '78%' }}></div>
                       </div>
                     </div>
                     <div className="rounded-lg bg-slate-800 p-4 flex flex-col">
@@ -681,8 +681,7 @@ export default function Home() {
                       {[40, 65, 45, 90, 80, 60, 70].map((height, i) => (
                         <div key={i} className="flex-1 flex flex-col items-center gap-1">
                           <div
-                            className={`w-full rounded-t-sm ${i === 3 ? 'bg-primary' : 'bg-slate-600'}`}
-                            style={{ height: `${height}%` }}
+                            className={`w-full rounded-t-sm h-[${height}px] ${i === 3 ? 'bg-primary' : 'bg-slate-600'}`}
                           ></div>
                           <div className="text-xs text-slate-400">{['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}</div>
                         </div>
@@ -698,7 +697,7 @@ export default function Home() {
                           <div className="text-sm font-medium text-white">Upper Body Focus</div>
                           <div className="text-xs text-slate-400">Today, 5:30 PM</div>
                         </div>
-                        <div className="text-xs px-2 py-1 rounded-full bg-primary/20 text-primary">
+                        <div className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-500">
                           30 min
                         </div>
                       </div>

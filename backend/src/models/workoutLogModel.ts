@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import { IExercise } from './routineModel';
 
+export type SchemaObjectId = mongoose.Schema.Types.ObjectId;
+
 export interface ICompletedExercise extends IExercise {
     completed: boolean;
     actualSets: number;
@@ -19,6 +21,7 @@ export interface IWorkoutLog {
     exercises: ICompletedExercise[];
     notes?: string;
     rating?: number;
+    caloriesBurned?: number; // Ensure this is present
     createdAt: Date;
     updatedAt: Date;
 }
@@ -78,6 +81,10 @@ const WorkoutLogSchema = new mongoose.Schema({
     duration: {
         type: Number,
         required: [true, 'Duration is required']
+    },
+    caloriesBurned: { // Added for analytics compatibility
+        type: Number,
+        default: 0
     },
     exercises: [CompletedExerciseSchema],
     notes: String,

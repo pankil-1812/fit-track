@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Analytics, IAnalytics } from '../models/analyticsModel';
-import { IWorkoutLog, WorkoutLog } from '../models/workoutLogModel';
+import { IWorkoutLog, WorkoutLog, SchemaObjectId } from '../models/workoutLogModel';
 import { asyncHandler, AppError } from '../utils/errorUtils';
 
 /**
@@ -259,7 +259,7 @@ export const rebuildAnalytics = asyncHandler(async (req: Request, res: Response)
         // Update totals
         analytics.totalWorkouts += 1;
         analytics.totalDuration += workout.duration;
-        analytics.totalCaloriesBurned += workout.caloriesBurned;
+        analytics.totalCaloriesBurned += workout.caloriesBurned ?? 0;
 
         // Update streak
         const workoutDate = new Date(workout.createdAt);
@@ -295,15 +295,15 @@ export const rebuildAnalytics = asyncHandler(async (req: Request, res: Response)
         if (existingDailyStat) {
             existingDailyStat.workoutCount += 1;
             existingDailyStat.totalDuration += workout.duration;
-            existingDailyStat.caloriesBurned += workout.caloriesBurned;
-            existingDailyStat.workouts.push(workout._id);
+            existingDailyStat.caloriesBurned += workout.caloriesBurned ?? 0;
+            existingDailyStat.workouts.push(workout._id as unknown as SchemaObjectId);
         } else {
             analytics.dailyStats.push({
                 date: workoutDate,
                 workoutCount: 1,
                 totalDuration: workout.duration,
-                caloriesBurned: workout.caloriesBurned,
-                workouts: [workout._id]
+                caloriesBurned: workout.caloriesBurned ?? 0,
+                workouts: [workout._id as unknown as SchemaObjectId]
             });
         }
     }
@@ -336,8 +336,8 @@ export const rebuildAnalytics = asyncHandler(async (req: Request, res: Response)
         endDate: currentWeekEnd,
         workoutCount: currentWeekWorkouts.length,
         totalDuration: currentWeekWorkouts.reduce((sum, w) => sum + w.duration, 0),
-        caloriesBurned: currentWeekWorkouts.reduce((sum, w) => sum + w.caloriesBurned, 0),
-        workouts: currentWeekWorkouts.map(w => w._id)
+        caloriesBurned: currentWeekWorkouts.reduce((sum, w) => sum + (w.caloriesBurned ?? 0), 0),
+        workouts: currentWeekWorkouts.map(w => w._id as unknown as SchemaObjectId)
     };
 
     await analytics.save();
