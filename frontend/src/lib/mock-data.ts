@@ -126,7 +126,7 @@ export const challenges = [
       { day: 3, target: "14 push-ups", completed: true },
       // Additional days would be defined here
     ],
-    image: "/images/challenges/pushup-challenge.jpg"
+    image: "/images/challenges/pushup-challenge.png"
   },
   {
     id: 2,
@@ -143,7 +143,7 @@ export const challenges = [
       { day: 2, target: "10,000 steps", completed: true },
       // Additional days would be defined here
     ],
-    image: "/images/challenges/steps-challenge.jpg"
+    image: "/images/challenges/steps-challenge.png"
   },
   {
     id: 3,
@@ -160,7 +160,7 @@ export const challenges = [
       { day: 2, target: "25 squats", completed: true },
       // Additional days would be defined here
     ],
-    image: "/images/challenges/squat-challenge.jpg"
+    image: "/images/challenges/squat-challenge.png"
   },
   {
     id: 4,
@@ -177,7 +177,7 @@ export const challenges = [
       { day: 2, target: "12-minute stretch routine", completed: true },
       // Additional days would be defined here
     ],
-    image: "/images/challenges/flexibility-challenge.jpg"
+    image: "/images/challenges/flexibility-challenge.png"
   },
 ];
 
@@ -192,7 +192,7 @@ export const socialPosts = [
       avatar: "/images/avatars/jordan.jpg"
     },
     content: "Just completed my 100th workout with FitTrack Pro! Really seeing progress in my chest and shoulders. Consistency is key! 💪",
-    image: "/images/social/workout-completion.jpg",
+    image: "/images/social/workout-completion.png",
     likes: 42,
     comments: [
       {
@@ -229,7 +229,7 @@ export const socialPosts = [
       avatar: "/images/avatars/taylor.jpg"
     },
     content: "New personal best on deadlifts today! 265 lbs x 5 reps. So happy with my progress this month. Thanks to everyone in the community for the tips and encouragement!",
-    image: "/images/social/deadlift-pr.jpg",
+    image: "/images/social/deadlift-pr.png",
     likes: 78,
     comments: [
       {
